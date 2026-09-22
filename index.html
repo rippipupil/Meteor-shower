@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meteor Shower</title>
+  <meta name="description" content="El tiempo de hoy, de la semana y del mes en tu ubicación, con datos meteorológicos reales.">
+  <meta name="theme-color" content="#1b5aa6">
+  <meta name="apple-mobile-web-app-title" content="Meteor Shower">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-sky="clear">
+  <main class="app">
+    <header class="topbar">
+      <div class="place">
+        <h1 id="placeName">Meteor Shower</h1>
+        <p id="placeDetail"></p>
+      </div>
+      <div class="actions" id="actions" hidden>
+        <button id="unitBtn" class="icon-btn" type="button" aria-label="Cambiar a grados Fahrenheit">°C</button>
+        <button id="refreshBtn" class="icon-btn" type="button" aria-label="Actualizar">↻</button>
+        <button id="changeBtn" class="icon-btn" type="button" aria-label="Cambiar ubicación">📍</button>
+      </div>
+    </header>
+
+    <section id="welcome" class="card welcome" hidden>
+      <img class="welcome-icon" src="icon.svg" alt="" width="96" height="96">
+      <h2>¿Qué tiempo hace donde estás?</h2>
+      <p>Comparte tu ubicación para ver el tiempo de hoy, de la semana y del mes, con datos meteorológicos reales.</p>
+      <button id="locateBtn" class="primary-btn" type="button">📍 Usar mi ubicación</button>
+      <div class="divider"><span>o busca una ciudad</span></div>
+      <form id="searchForm" class="search" role="search">
+        <input id="searchInput" type="search" placeholder="Madrid, Buenos Aires, Lima…" autocomplete="off" aria-label="Buscar ciudad">
+      </form>
+      <ul id="searchResults" class="results"></ul>
+      <p id="welcomeMsg" class="msg" role="status"></p>
+      <button id="cancelBtn" class="link-btn" type="button" hidden>← Volver</button>
+    </section>
+
+    <section id="loading" class="loading" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Consultando el tiempo…</p>
+    </section>
+
+    <section id="error" class="card error" hidden>
+      <p id="errorMsg"></p>
+      <div class="error-actions">
+        <button id="retryBtn" class="primary-btn" type="button">Reintentar</button>
+        <button id="errorChangeBtn" class="link-btn" type="button">Cambiar ubicación</button>
+      </div>
+    </section>
+
+    <section id="weather" hidden>
+      <div id="hero" class="hero"></div>
+
+      <nav class="tabs" role="tablist" aria-label="Periodo">
+        <button role="tab" type="button" data-tab="hoy" aria-selected="true" aria-controls="panel-hoy">Hoy</button>
+        <button role="tab" type="button" data-tab="semana" aria-selected="false" aria-controls="panel-semana">Semana</button>
+        <button role="tab" type="button" data-tab="mes" aria-selected="false" aria-controls="panel-mes">Mes</button>
+      </nav>
+
+      <div id="panel-hoy" class="panel" role="tabpanel"></div>
+      <div id="panel-semana" class="panel" role="tabpanel" hidden></div>
+      <div id="panel-mes" class="panel" role="tabpanel" hidden></div>
+    </section>
+
+    <footer class="footer">
+      Datos meteorológicos de <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0)
+      · Históricos: reanálisis ERA5 de Copernicus
+      · Localidad: <a href="https://www.bigdatacloud.com/" target="_blank" rel="noopener">BigDataCloud</a>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

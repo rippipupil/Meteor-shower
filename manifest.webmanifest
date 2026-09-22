@@ -1,0 +1,16 @@
+{
+  "name": "Meteor Shower",
+  "short_name": "Meteor Shower",
+  "description": "El tiempo de hoy, de la semana y del mes en tu ubicación, con datos reales.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1330",
+  "theme_color": "#1b5aa6",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
