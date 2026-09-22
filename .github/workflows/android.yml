@@ -1,0 +1,80 @@
+name: Generar y publicar el APK de Meteor Shower
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Compilar APK Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Firmar siempre con la misma clave permite instalar cada APK nuevo
+      # encima del anterior como una actualización, sin desinstalar.
+      - name: Usar una firma de depuración fija
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
+      - name: Instalar Capacitor
+        run: npm install
+
+      - name: Preparar archivos web
+        run: |
+          mkdir -p www
+          cp index.html app.js styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png www/
+
+      - name: Crear proyecto Android
+        run: npx cap add android
+
+      # La app usa navigator.geolocation; Capacitor pide el permiso al
+      # usuario, pero Android exige que esté declarado en el manifiesto.
+      - name: Declarar el permiso de ubicación
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location" android:required="false" />\n</manifest>#' "$MANIFEST"
+          grep -q ACCESS_COARSE_LOCATION "$MANIFEST"
+
+      - name: Generar el icono de la app a partir de assets/
+        run: npx @capacitor/assets generate --android
+
+      - name: Copiar la aplicación web al proyecto Android
+        run: npx cap sync android
+
+      - name: Compilar APK de Android
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Guardar APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: meteor-shower-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publicar APK descargable en Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-${{ github.run_number }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk meteor-shower.apk
+          gh release create "$TAG" meteor-shower.apk --target "${{ github.sha }}" --title "Meteor Shower Android $TAG" --notes "APK generado automáticamente desde la rama main. Descárgalo e instálalo para usar Meteor Shower en Android."

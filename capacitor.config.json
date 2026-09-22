@@ -1,0 +1,8 @@
+{
+  "appId": "com.rippipupil.meteorshower",
+  "appName": "Meteor Shower",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0b1330"
+  }
+}

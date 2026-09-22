@@ -1,0 +1,17 @@
+{
+  "name": "meteor-shower",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Empaquetado de Meteor Shower para Android",
+  "scripts": {
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  }
+}
