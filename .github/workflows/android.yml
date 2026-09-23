@@ -47,7 +47,7 @@ jobs:
         run: |
           mkdir -p www
           cp index.html app.js styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png www/
-          cp -r icons fonts frames www/
+          cp -r icons fonts frames fx www/
 
       - name: Crear proyecto Android
         run: npx cap add android

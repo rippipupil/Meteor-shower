@@ -834,6 +834,7 @@ function setSky(mode) {
   document.body.dataset.sky = mode;
   box.textContent = '';
   const small = window.innerWidth < 600;
+  const pick = (list) => list[Math.floor(rand(0, list.length))];
   const frag = document.createDocumentFragment();
   const fall = (cls, n, durMin, durMax, extra) => {
     for (let k = 0; k < n; k += 1) {
@@ -842,27 +843,50 @@ function setSky(mode) {
       frag.appendChild(particle(cls, { left: `${rand(0, 100).toFixed(1)}%`, animationDuration: `${dur.toFixed(2)}s`, animationDelay: `${(-rand(0, dur)).toFixed(2)}s`, ...extra() }));
     }
   };
+  // Todos los tamaños son múltiplos del dibujo original para que los píxeles se vean nítidos.
   if (mode === 'rain' || mode === 'storm') {
-    fall('drop', small ? 55 : 80, 0.7, 1.3, () => ({ height: `${Math.round(rand(10, 18))}px`, opacity: rand(0.55, 0.95).toFixed(2) }));
-    if (mode === 'storm') frag.appendChild(particle('flash', {}));
+    const heavy = mode === 'storm';
+    fall('drop', small ? (heavy ? 75 : 55) : (heavy ? 110 : 80), heavy ? 0.5 : 0.7, heavy ? 0.9 : 1.3,
+      () => ({ height: `${pick([8, 12, 12, 16])}px`, opacity: rand(0.55, 0.95).toFixed(2) }));
+    if (heavy) {
+      // Dos rayos con ritmos distintos; cada uno ilumina la pantalla al caer.
+      [[7, -2.5], [11.3, -8]].forEach(([dur, delay]) => {
+        const style = { animationDuration: `${dur}s`, animationDelay: `${delay}s` };
+        const bolt = particle('bolt', { ...style });
+        placeBolt(bolt);
+        bolt.addEventListener('animationiteration', () => placeBolt(bolt));
+        frag.appendChild(bolt);
+        frag.appendChild(particle('flash', { ...style }));
+      });
+    }
   } else if (mode === 'snow') {
     fall('flake', small ? 45 : 70, 7, 14, () => {
-      const size = `${[4, 4, 6, 8][Math.floor(rand(0, 4))]}px`;
+      const size = `${pick([5, 5, 10, 10, 15])}px`;
       return { width: size, height: size, '--sway': `${Math.round(rand(-40, 40))}px` };
     });
   } else if (mode === 'night') {
     for (let k = 0; k < (small ? 45 : 70); k += 1) {
-      const size = `${[2, 2, 3, 4][Math.floor(rand(0, 4))]}px`;
-      frag.appendChild(particle('star', { left: `${rand(0, 100).toFixed(1)}%`, top: `${rand(0, 100).toFixed(1)}%`, width: size, height: size, animationDuration: `${rand(1.5, 4).toFixed(2)}s`, animationDelay: `${(-rand(0, 4)).toFixed(2)}s` }));
+      const cross = Math.random() < 0.25;
+      const size = `${cross ? pick([6, 9]) : pick([2, 2, 3, 4])}px`;
+      frag.appendChild(particle(cross ? 'star cross' : 'star', { left: `${rand(0, 100).toFixed(1)}%`, top: `${rand(0, 100).toFixed(1)}%`, width: size, height: size, animationDuration: `${rand(1.5, 4).toFixed(2)}s`, animationDelay: `${(-rand(0, 4)).toFixed(2)}s` }));
     }
     frag.appendChild(particle('shooting', {}));
   } else {
     fall('', small ? 44 : 64, 14, 38, () => {
-      const size = `${Math.round(7 + Math.random() ** 1.7 * 30)}px`;
+      const size = `${pick([12, 12, 12, 24, 24, 36])}px`;
       return { width: size, height: size, '--drift': `${Math.round(rand(-35, 35))}px` };
     });
   }
   box.appendChild(frag);
+}
+
+// Cada vez que un rayo vuelve a caer, lo hace en otro sitio y con otro tamaño.
+function placeBolt(bolt) {
+  const scale = [4, 5, 6][Math.floor(rand(0, 3))];
+  bolt.style.width = `${10 * scale}px`;
+  bolt.style.height = `${20 * scale}px`;
+  bolt.style.left = `${rand(5, 85).toFixed(1)}%`;
+  bolt.style.top = `${rand(2, 40).toFixed(1)}%`;
 }
 
 function renderWeek() {

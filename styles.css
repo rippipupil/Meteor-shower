@@ -112,53 +112,72 @@ strong { font-weight: 700; }
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
-/* Burbujas (cielo seco) */
+/* Burbujas pixel (cielo seco) */
 .bubbles i:not([class]) {
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.35) 22%, rgba(202, 174, 255, 0.2) 55%, rgba(202, 174, 255, 0.1) 78%);
-  box-shadow: inset 0 0 0 2px rgba(221, 204, 255, 0.8), inset -3px -3px 6px rgba(138, 92, 240, 0.45), 0 0 8px rgba(202, 174, 255, 0.25);
+  background: url("fx/bubble.svg") 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
   animation-name: bubble-rise;
+  animation-timing-function: steps(90);
 }
 @keyframes bubble-rise {
-  0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
   7% { opacity: 0.9; }
-  50% { transform: translate3d(var(--drift, 0px), -60vh, 0) scale(1); }
-  88% { opacity: 0.55; }
-  100% { transform: translate3d(calc(var(--drift, 0px) * -0.4), -122vh, 0) scale(1.12); opacity: 0; }
+  50% { transform: translate3d(var(--drift, 0px), -60vh, 0); }
+  88% { opacity: 0.6; }
+  100% { transform: translate3d(calc(var(--drift, 0px) * -0.4), -122vh, 0); opacity: 0; }
 }
-/* Gotas pixel (lluvia y tormenta) */
+/* Gotas pixel (lluvia y tormenta): bloques de 2 px con la punta más clara */
 .bubbles .drop {
   top: -24px;
   bottom: auto;
-  width: 3px;
-  background: linear-gradient(180deg, rgba(134, 201, 255, 0), #86c9ff);
+  width: 2px;
+  background: linear-gradient(180deg, #d6ecff 0 25%, #86c9ff 25% 100%);
   animation-name: rain-fall;
+  animation-timing-function: steps(24);
 }
 @keyframes rain-fall {
   0% { transform: translate3d(0, 0, 0); }
   100% { transform: translate3d(-24px, 110vh, 0); }
 }
+/* Rayos pixel y destello de pantalla (tormenta) */
+.bubbles .bolt {
+  bottom: auto;
+  background: url("fx/bolt.svg") 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  animation-name: bolt;
+  animation-timing-function: steps(1);
+}
 .bubbles .flash {
   inset: 0;
-  bottom: 0;
   background: #e8dcff;
-  animation: flash 7s steps(1) infinite;
+  animation-name: flash;
+  animation-timing-function: steps(1);
+}
+@keyframes bolt {
+  0%, 59.9% { opacity: 0; }
+  60% { opacity: 1; }
+  61.5% { opacity: 0; }
+  62.5% { opacity: 1; }
+  64% { opacity: 0; }
+  100% { opacity: 0; }
 }
 @keyframes flash {
-  0%, 100% { opacity: 0; }
-  60% { opacity: 0.35; }
-  61% { opacity: 0; }
-  63% { opacity: 0.22; }
+  0%, 59.9% { opacity: 0; }
+  60% { opacity: 0.2; }
+  61.5% { opacity: 0; }
+  62.5% { opacity: 0.12; }
   64% { opacity: 0; }
+  100% { opacity: 0; }
 }
 /* Copos pixel (nieve) */
 .bubbles .flake {
-  top: -12px;
+  top: -16px;
   bottom: auto;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(202, 174, 255, 0.6);
-  opacity: 0.9;
+  background: url("fx/flake.svg") 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  opacity: 0.95;
   animation-name: snow-fall;
+  animation-timing-function: steps(60);
 }
 @keyframes snow-fall {
   0% { transform: translate3d(0, 0, 0); }
@@ -171,35 +190,41 @@ strong { font-weight: 700; }
 .bubbles .star {
   bottom: auto;
   background: #fff4ff;
-  box-shadow: 0 0 4px rgba(246, 198, 255, 0.8);
   animation-name: twinkle;
   animation-timing-function: steps(1);
 }
+.bubbles .star.cross { background: url("fx/star.svg") 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
 @keyframes twinkle {
   0%, 100% { opacity: 0.9; }
   40% { opacity: 0.25; }
   70% { opacity: 0.6; }
 }
 .bubbles .shooting {
-  top: 12%;
-  left: 70%;
+  top: 10%;
+  left: 68%;
   bottom: auto;
-  width: 90px;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(221, 124, 255, 0), #f6c6ff 70%, #ffffff);
-  transform: rotate(-35deg);
-  animation: shooting 11s linear infinite;
+  width: 96px;
+  height: 48px;
+  background: url("fx/shooting.svg") 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  animation: shooting 11s steps(1) infinite;
 }
 @keyframes shooting {
-  0%, 88% { opacity: 0; transform: translate3d(0, 0, 0) rotate(-35deg); }
-  90% { opacity: 1; }
-  96% { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(-260px, 180px, 0) rotate(-35deg); }
+  0%, 88% { opacity: 0; transform: translate3d(0, 0, 0); }
+  89% { opacity: 1; transform: translate3d(0, 0, 0); }
+  90% { transform: translate3d(-48px, 24px, 0); }
+  91% { transform: translate3d(-96px, 48px, 0); }
+  92% { transform: translate3d(-144px, 72px, 0); }
+  93% { transform: translate3d(-192px, 96px, 0); }
+  94% { opacity: 1; transform: translate3d(-240px, 120px, 0); }
+  95%, 100% { opacity: 0; transform: translate3d(-240px, 120px, 0); }
 }
 
-/* El cielo del fondo cambia un poco de tono según el tiempo */
+/* El cielo del fondo cambia de tono según el tiempo; la tormenta es la más oscura */
 body[data-sky="night"]::before { background: radial-gradient(rgba(202, 174, 255, 0.05) 1px, transparent 1.2px) 0 0 / 8px 8px, linear-gradient(180deg, #0f0920 0%, #1a1030 55%, #24173f 100%); }
-body[data-sky="rain"]::before, body[data-sky="storm"]::before { background: radial-gradient(rgba(170, 190, 255, 0.07) 1px, transparent 1.2px) 0 0 / 8px 8px, linear-gradient(180deg, #171430 0%, #1f1b3d 55%, #2a2450 100%); }
+body[data-sky="rain"]::before { background: radial-gradient(rgba(170, 190, 255, 0.07) 1px, transparent 1.2px) 0 0 / 8px 8px, linear-gradient(180deg, #171430 0%, #1f1b3d 55%, #2a2450 100%); }
+body[data-sky="storm"]::before { background: radial-gradient(rgba(170, 190, 255, 0.05) 1px, transparent 1.2px) 0 0 / 8px 8px, linear-gradient(180deg, #07060f 0%, #0e0c1c 55%, #16132a 100%); }
+body[data-sky="storm"] { background: #16132a; }
 
 /* ---------- Estructura ---------- */
 .app {

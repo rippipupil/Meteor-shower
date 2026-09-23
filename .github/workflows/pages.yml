@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html app.js styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png _site/
-          cp -r icons fonts frames _site/
+          cp -r icons fonts frames fx _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
