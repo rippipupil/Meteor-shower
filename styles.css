@@ -252,6 +252,24 @@ strong { font-weight: 700; }
 }
 .hero-rain.is-wet { color: var(--lcd-cool); border-color: rgba(134, 201, 255, 0.5); text-shadow: 0 0 6px rgba(134, 201, 255, 0.55); }
 
+/* Aviso de datos guardados sin conexión */
+.offline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 4px 12px;
+  background: #ffd84a;
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  font-size: 1.2rem;
+  line-height: 1.1;
+  box-shadow: 0 4px 0 rgba(6, 2, 16, 0.6), inset 0 0 0 2px var(--ink);
+}
+.offline[hidden] { display: none; }
+.offline .link-btn { margin: 0; padding: 2px 0; color: var(--ink); font-size: 1.2rem; }
+
 /* ---------- Pestañas ---------- */
 .tabs {
   position: sticky;

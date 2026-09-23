@@ -17,6 +17,8 @@ const PLACE_KEY = 'meteor-shower:place';
 const WIDGET_HINT_KEY = 'meteor-shower:widget-hint';
 const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
+const FORECAST_KEY = 'meteor-shower:forecast';
+const CACHE_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // más viejo que esto ya no sirve
 const CLIMATE_YEARS = 10;
 const MONTH_DAYS = 30;
 const WEEK_DAYS = 7;
@@ -65,7 +67,7 @@ const el = {
   searchInput: $('#searchInput'), searchResults: $('#searchResults'), welcomeMsg: $('#welcomeMsg'),
   cancelBtn: $('#cancelBtn'), loading: $('#loading'), error: $('#error'), errorMsg: $('#errorMsg'),
   retryBtn: $('#retryBtn'), errorChangeBtn: $('#errorChangeBtn'), weather: $('#weather'),
-  hero: $('#hero'), tabs: document.querySelectorAll('[role="tab"]'),
+  hero: $('#hero'), offline: $('#offline'), offlineText: $('#offlineText'), offlineRetry: $('#offlineRetry'), tabs: document.querySelectorAll('[role="tab"]'),
   panels: { hoy: $('#panel-hoy'), semana: $('#panel-semana'), mes: $('#panel-mes') }
 };
 
@@ -781,9 +783,38 @@ function selectTab(tab) {
 
 /* ---------- Flujo principal ---------- */
 
+// Última previsión descargada de cada lugar, para abrir al instante y para
+// seguir mostrando algo útil cuando no hay conexión.
+const cacheKey = (place, unit) => `${place.lat.toFixed(3)},${place.lon.toFixed(3)}|${unit}`;
+function readCachedForecast(place, unit) {
+  const c = store.get(FORECAST_KEY);
+  if (!c || c.key !== cacheKey(place, unit) || Date.now() - c.savedAt > CACHE_MAX_AGE) return null;
+  return c;
+}
+
+function renderOffline() {
+  const off = state.offlineSince;
+  el.offline.hidden = !off;
+  if (!off) return;
+  const d = new Date(off);
+  const today = new Date().toDateString() === d.toDateString();
+  const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const when = today ? `las ${time}` : `${d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}, ${time}`;
+  el.offlineText.textContent = `Sin conexión · datos de ${when}`;
+}
+
 async function loadWeather({ quiet = false } = {}) {
   const id = ++state.requestId;
   const { place, unit } = state;
+  const cached = readCachedForecast(place, unit);
+  if (!quiet && cached && !state.forecast) {
+    // Enseñar ya lo último guardado mientras llegan los datos nuevos.
+    state.forecast = cached.data;
+    state.loadedAt = cached.savedAt;
+    renderAll();
+    showView('weather');
+    quiet = true;
+  }
   if (quiet) el.refreshBtn.classList.add('is-spinning');
   else showView('loading');
 
@@ -793,7 +824,10 @@ async function loadWeather({ quiet = false } = {}) {
     state.forecast = data;
     state.climate = null;
     state.loadedAt = Date.now();
+    state.offlineSince = null;
+    store.set(FORECAST_KEY, { key: cacheKey(place, unit), savedAt: state.loadedAt, data });
     renderAll();
+    renderOffline();
     showView('weather');
     syncWidget();
 
@@ -807,6 +841,18 @@ async function loadWeather({ quiet = false } = {}) {
       });
   } catch (err) {
     if (id !== state.requestId) return;
+    // Sin red: si hay datos guardados de este lugar, se siguen mostrando con aviso.
+    const fallback = state.forecast ? { data: state.forecast, savedAt: state.loadedAt } : cached;
+    if (fallback) {
+      state.forecast = fallback.data;
+      state.loadedAt = fallback.savedAt;
+      state.offlineSince = fallback.savedAt;
+      if (!state.climate) state.climate = 'error';
+      renderAll();
+      renderOffline();
+      showView('weather');
+      return;
+    }
     let msg = 'No se pudo obtener el tiempo. Comprueba tu conexión e inténtalo de nuevo.';
     if (!navigator.onLine) msg = 'Parece que no tienes conexión a internet.';
     else if (err.name === 'AbortError') msg = 'El servicio meteorológico está tardando demasiado en responder. Inténtalo de nuevo.';
@@ -919,6 +965,9 @@ function bindEvents() {
   });
   el.retryBtn.addEventListener('click', () => loadWeather());
   el.refreshBtn.addEventListener('click', () => loadWeather({ quiet: true }));
+  el.offlineRetry.addEventListener('click', () => loadWeather({ quiet: true }));
+  // Al recuperar la conexión se actualiza solo.
+  window.addEventListener('online', () => { if (state.offlineSince) loadWeather({ quiet: true }); });
   el.unitBtn.addEventListener('click', () => {
     state.unit = isF() ? 'celsius' : 'fahrenheit';
     store.set(UNIT_KEY, state.unit);
