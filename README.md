@@ -37,7 +37,7 @@ Con la app instalada, mantén pulsado un hueco de la pantalla de inicio, toca **
 
 - los grados actuales y la máxima y mínima del día,
 - un icono en pixel art del cielo (soleado, nublado, lluvia, nieve, tormenta, niebla, de día o de noche),
-- si va a llover hoy y a qué hora (por ejemplo «Lluvia hoy 17:00 · 60 %» o «Sin lluvia hoy»).
+- si va a llover hoy y a qué hora, en azul con un paraguas pixel (por ejemplo «Lluvia hoy 17:00 · 60 %»). Si no va a llover, esa línea no aparece.
 
 Usa la ubicación que elijas en la app y se actualiza solo cada 30 minutos, sin tener que abrirla (también tras reiniciar el móvil). Abajo a la derecha muestra la hora de la última actualización: tocando **↻** se actualiza al momento. Al tocar el resto del widget se abre la app.
 

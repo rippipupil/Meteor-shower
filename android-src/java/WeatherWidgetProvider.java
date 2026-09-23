@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONArray;
@@ -291,7 +292,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 ? "No se pudo consultar el tiempo"
                 : "Abre Meteor Shower y elige tu ubicación");
             views.setImageViewResource(R.id.w_icon, R.drawable.wx_partly_day);
-            views.setImageViewResource(R.id.w_rain_icon, R.drawable.wx_check);
+            views.setTextColor(R.id.w_rain, 0xFFD2BDFF);
+            views.setViewVisibility(R.id.w_rain_icon, View.GONE);
+            views.setViewVisibility(R.id.w_rain_row, View.VISIBLE);
             views.setTextViewText(R.id.w_updated, "");
         } else {
             boolean wet = data.optBoolean("wet", false);
@@ -299,10 +302,12 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.w_desc, data.optString("desc", ""));
             views.setTextViewText(R.id.w_place, data.optString("place", ""));
             views.setTextViewText(R.id.w_maxmin, data.optString("maxmin", ""));
+            // La lluvia solo aparece si va a llover hoy: texto azul con el paraguas pixel
             views.setTextViewText(R.id.w_rain, data.optString("rain", ""));
-            views.setTextColor(R.id.w_rain, wet ? 0xFF86C9FF : 0xFFD2BDFF);
+            views.setTextColor(R.id.w_rain, 0xFF86C9FF);
+            views.setViewVisibility(R.id.w_rain_icon, View.VISIBLE);
+            views.setViewVisibility(R.id.w_rain_row, wet ? View.VISIBLE : View.GONE);
             views.setImageViewResource(R.id.w_icon, iconRes(data.optString("icon", "cloudy")));
-            views.setImageViewResource(R.id.w_rain_icon, wet ? R.drawable.wx_umbrella : R.drawable.wx_check);
             views.setTextViewText(R.id.w_updated, (stale ? "sin red " : "") + data.optString("updated", ""));
         }
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
