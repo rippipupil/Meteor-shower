@@ -8,21 +8,13 @@ jobs:
     steps:
       - name: Probe
         run: |
-          H='Origin: https://localhost'
-          for u in "https://api.meteoalarm.org/edr/v1/collections?f=json" "https://api.meteoalarm.org/edr/v1/collections/warnings?f=json" "https://api.meteoalarm.org/edr/v1/collections/warnings/position?coords=POINT(-0.6%2038.6)&f=json" "https://api.meteoalarm.org/edr/v1/collections/warnings/position?coords=POINT(-3.7%2040.4)&f=json" "https://api.meteoalarm.org/edr/v1/collections/warnings/locations?f=json" "https://feeds.meteoalarm.org/api/v1/geocodes" ; do
-            echo "=== $u"; curl -sS -m 30 -D hdr.txt -H "$H" "$u" -o body.txt || true
-            grep -i "^HTTP\|access-control\|content-type\|content-length" hdr.txt; head -c 3000 body.txt; echo
+          for c in "38.88&longitude=-6.97" "40.42&longitude=-3.70" "43.26&longitude=-2.93" "39.57&longitude=2.65" "28.47&longitude=-16.25" "41.39&longitude=2.17" "39.47&longitude=-0.38" "42.34&longitude=-7.86"; do
+            echo "=== $c"
+            curl -sS "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$c&localityLanguage=es" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          print(d.get('city'),'|',d.get('principalSubdivision'),'|',d.get('countryCode'))
+          for a in d.get('localityInfo',{}).get('administrative',[]): print('  adm',a.get('adminLevel'),a.get('name'),'|',a.get('description'),'|',a.get('isoCode'))
+          "
           done
-          echo "=== spain feed geocodes list"; curl -sS https://feeds.meteoalarm.org/api/v1/warnings/feeds-spain -o ma.json
-          python3 - <<'PY'
-          import json
-          d=json.load(open('ma.json'))
-          seen={}
-          for x in d['warnings']:
-              for i in x['alert']['info']:
-                  if i.get('language')!='es-ES': continue
-                  for a in i['area']:
-                      for g in a.get('geocode',[]):
-                          seen[g['value']]=a['areaDesc']
-          for k in sorted(seen): print(k, seen[k])
-          PY
+          echo "=== geocoding admin2"; curl -sS "https://geocoding-api.open-meteo.com/v1/search?name=Merida&count=2&language=es" | head -c 900; echo
