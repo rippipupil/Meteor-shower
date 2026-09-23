@@ -65,7 +65,7 @@ Todos usan el lugar principal (★), el mismo que el widget. Android puede retra
 
 ## Abrirla en el navegador
 
-Se publica automáticamente en GitHub Pages con cada cambio en `main` (en *Settings → Pages*, elige **GitHub Actions** como origen la primera vez) y queda en `https://rippipupil.github.io/meteor-shower/`. Desde el móvil se puede instalar como app con «Añadir a pantalla de inicio».
+Se publica automáticamente en GitHub Pages con cada cambio en `main` y queda en `https://rippipupil.github.io/Meteor-shower/`. Desde el móvil se puede instalar como app con «Añadir a pantalla de inicio».
 
 Para probarla en local basta con servir la carpeta, por ejemplo con `python3 -m http.server`, y abrir `http://localhost:8000`. La geolocalización del navegador solo funciona desde `https://` o `localhost`, no abriendo `index.html` directamente como archivo.
 
