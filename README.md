@@ -48,7 +48,7 @@ Hay otros dos widgets en la misma lista:
 - **Meteor Shower · Reloj** (2×1): la hora y la fecha como un reloj, con el icono del cielo y los grados.
 - **Meteor Shower · Semana** (4×2): los próximos 5 días con icono, máxima, mínima y probabilidad de lluvia cuando es alta.
 
-Los tres se actualizan juntos con una sola consulta.
+Los tres se actualizan juntos con una sola consulta. Los widgets no pueden usar fuentes propias, así que sus textos se dibujan como imágenes con la fuente pixel (`PixelText.java`). En el reloj, la hora se redibuja cada minuto con una alarma exacta que no despierta el móvil; si Android no permite alarmas exactas, el reloj usa la hora del sistema.
 
 Si Android está ahorrando batería con la app, en la tarjeta **Avisos** aparece un botón **Permitir** para dejar que el widget y los avisos se actualicen en segundo plano. En algunos móviles (Xiaomi, Huawei, Samsung…) conviene además activar el *inicio automático* o quitar la app de «apps en suspensión». Su código nativo está en `android-src/` y se añade al proyecto Android durante el build.
 

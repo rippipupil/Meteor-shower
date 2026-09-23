@@ -26,23 +26,23 @@ public class WeekWidgetProvider extends WeatherWidgetProvider {
     static void render(Context context, AppWidgetManager manager, int[] ids, JSONObject data) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_week);
         JSONArray days = data == null ? null : data.optJSONArray("days");
-        views.setTextViewText(R.id.k_place, data == null ? "Abre Meteor Shower" : data.optString("place", ""));
+        PixelText.set(views, context, R.id.k_place, data == null ? "Abre Meteor Shower" : data.optString("place", ""), 18, LILAC);
         for (int i = 0; i < CELLS.length; i++) {
             JSONObject d = days == null ? null : days.optJSONObject(i);
             int[] c = CELLS[i];
             if (d == null) {
-                views.setTextViewText(c[0], "–");
-                views.setTextViewText(c[2], "");
-                views.setTextViewText(c[3], "");
+                PixelText.set(views, context, c[0], "–", 18, LILAC);
+                PixelText.set(views, context, c[2], "", 22, WHITE);
+                PixelText.set(views, context, c[3], "", 18, DIM);
                 views.setViewVisibility(c[4], View.INVISIBLE);
                 continue;
             }
             int rain = d.optInt("rain", 0);
-            views.setTextViewText(c[0], d.optString("name"));
+            PixelText.set(views, context, c[0], d.optString("name"), 18, LILAC);
             views.setImageViewResource(c[1], iconRes(d.optString("icon", "cloudy")));
-            views.setTextViewText(c[2], d.optString("max"));
-            views.setTextViewText(c[3], d.optString("min"));
-            views.setTextViewText(c[4], rain + " %");
+            PixelText.set(views, context, c[2], d.optString("max"), 22, WHITE);
+            PixelText.set(views, context, c[3], d.optString("min"), 18, DIM);
+            PixelText.set(views, context, c[4], rain + " %", 16, BLUE);
             // Solo se enseña la lluvia cuando es probable, en azul como en el widget grande
             views.setViewVisibility(c[4], rain >= 30 ? View.VISIBLE : View.INVISIBLE);
         }

@@ -6,7 +6,7 @@
     android:minHeight="110dp"
     android:minResizeWidth="200dp"
     android:minResizeHeight="100dp"
-    android:previewLayout="@layout/widget_preview"
+    android:previewImage="@drawable/widget_preview_weather"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"
     android:targetCellHeight="2"

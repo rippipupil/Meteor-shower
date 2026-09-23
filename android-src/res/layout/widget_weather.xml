@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Los textos son imágenes dibujadas con la fuente pixel VT323 (PixelText):
+     los widgets no pueden usar fuentes propias en sus TextView. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -29,26 +31,21 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/w_temp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="--°"
-                android:textColor="#F3ECFF"
-                android:textSize="46sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="fitStart" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/w_desc"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Cargando…"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="fitStart" />
         </LinearLayout>
 
         <LinearLayout
@@ -58,32 +55,29 @@
             android:gravity="end"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/w_place"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxEms="8"
-                android:maxLines="1"
-                android:text=""
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="fitEnd"
+                android:maxWidth="130dp" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/w_maxmin"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="fitEnd"
+                android:layout_marginTop="2dp" />
 
             <LinearLayout
                 android:id="@+id/w_refresh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingTop="2dp"
@@ -97,15 +91,13 @@
                     android:scaleType="fitCenter"
                     android:src="@drawable/wx_refresh" />
 
-                <TextView
+                <ImageView
                     android:id="@+id/w_updated"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/vt323"
-                    android:singleLine="true"
-                    android:text=""
-                    android:textColor="#A790D6"
-                    android:textSize="15sp" />
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@null"
+                    android:scaleType="fitStart" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
@@ -128,18 +120,14 @@
             android:src="@drawable/wx_umbrella"
             android:visibility="gone" />
 
-        <TextView
+        <ImageView
             android:id="@+id/w_rain"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="7dp"
+            android:adjustViewBounds="true"
+            android:contentDescription="@null"
+            android:scaleType="fitStart"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:fontFamily="@font/vt323"
-            android:maxLines="1"
-            android:text="Consultando el tiempo…"
-            android:textColor="#D2BDFF"
-            android:textSize="20sp" />
-
+            android:layout_marginStart="7dp" />
     </LinearLayout>
 </LinearLayout>

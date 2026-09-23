@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget de semana: los próximos 5 días en columnas -->
+<!-- Widget de semana: los próximos 5 días en columnas (textos en fuente pixel) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/k_root"
     android:layout_width="match_parent"
@@ -9,17 +9,15 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <TextView
+    <ImageView
         android:id="@+id/k_place"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text=""
-        android:textColor="#D2BDFF"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:adjustViewBounds="true"
+        android:contentDescription="@null"
+        android:scaleType="fitStart"
+        android:maxWidth="200dp"
+        android:layout_marginStart="4dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,15 +32,13 @@
             android:gravity="center_horizontal"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/d0_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="–"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
             <ImageView
                 android:id="@+id/d0_icon"
@@ -53,39 +49,29 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/wx_cloudy" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d0_max"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d0_min"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="17sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d0_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="0 %"
-                android:textColor="#86C9FF"
-                android:textSize="15sp"
-                android:visibility="invisible" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
         </LinearLayout>
 
         <LinearLayout
@@ -95,15 +81,13 @@
             android:gravity="center_horizontal"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/d1_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="–"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
             <ImageView
                 android:id="@+id/d1_icon"
@@ -114,39 +98,29 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/wx_cloudy" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d1_max"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d1_min"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="17sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d1_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="0 %"
-                android:textColor="#86C9FF"
-                android:textSize="15sp"
-                android:visibility="invisible" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
         </LinearLayout>
 
         <LinearLayout
@@ -156,15 +130,13 @@
             android:gravity="center_horizontal"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/d2_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="–"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
             <ImageView
                 android:id="@+id/d2_icon"
@@ -175,39 +147,29 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/wx_cloudy" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d2_max"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d2_min"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="17sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d2_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="0 %"
-                android:textColor="#86C9FF"
-                android:textSize="15sp"
-                android:visibility="invisible" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
         </LinearLayout>
 
         <LinearLayout
@@ -217,15 +179,13 @@
             android:gravity="center_horizontal"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/d3_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="–"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
             <ImageView
                 android:id="@+id/d3_icon"
@@ -236,39 +196,29 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/wx_cloudy" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d3_max"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d3_min"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="17sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d3_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="0 %"
-                android:textColor="#86C9FF"
-                android:textSize="15sp"
-                android:visibility="invisible" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
         </LinearLayout>
 
         <LinearLayout
@@ -278,15 +228,13 @@
             android:gravity="center_horizontal"
             android:orientation="vertical">
 
-            <TextView
+            <ImageView
                 android:id="@+id/d4_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="–"
-                android:textColor="#D2BDFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
             <ImageView
                 android:id="@+id/d4_icon"
@@ -297,39 +245,29 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/wx_cloudy" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d4_max"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#F3ECFF"
-                android:textSize="21sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d4_min"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="17sp" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
 
-            <TextView
+            <ImageView
                 android:id="@+id/d4_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="0 %"
-                android:textColor="#86C9FF"
-                android:textSize="15sp"
-                android:visibility="invisible" />
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:scaleType="center" />
         </LinearLayout>
 
     </LinearLayout>

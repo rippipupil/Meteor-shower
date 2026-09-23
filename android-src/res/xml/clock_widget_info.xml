@@ -6,7 +6,7 @@
     android:minHeight="40dp"
     android:minResizeWidth="140dp"
     android:minResizeHeight="40dp"
-    android:previewLayout="@layout/widget_clock_preview"
+    android:previewImage="@drawable/widget_preview_clock"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="2"
     android:targetCellHeight="1"

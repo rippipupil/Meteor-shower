@@ -45,6 +45,11 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         + "&current=temperature_2m,weather_code,is_day"
         + "&hourly=precipitation_probability,precipitation,weather_code"
         + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max";
+    // Colores del widget (los mismos que la app)
+    static final int WHITE = 0xFFF3ECFF;
+    static final int LILAC = 0xFFD2BDFF;
+    static final int DIM = 0xFFA790D6;
+    static final int BLUE = 0xFF86C9FF;
     private static final String[] DAY_NAMES = { "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb" };
 
     /** Todos los widgets colocados, de cualquier tipo. */
@@ -85,7 +90,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             int[] big = ids(manager, context, WeatherWidgetProvider.class);
             if (intent.getBooleanExtra("manual", false) && big.length > 0) {
                 RemoteViews busy = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
-                busy.setTextViewText(R.id.w_updated, "actualizando…");
+                PixelText.set(busy, context, R.id.w_updated, "actualizando…", 15, DIM);
                 manager.partiallyUpdateAppWidget(big, busy);
             }
             onUpdate(context, manager, big);
@@ -337,31 +342,29 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     private static void render(Context context, AppWidgetManager manager, int[] ids, JSONObject data, boolean stale) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
         if (data == null) {
-            views.setTextViewText(R.id.w_temp, "--°");
-            views.setTextViewText(R.id.w_desc, stale ? "Sin conexión" : "Sin ubicación");
-            views.setTextViewText(R.id.w_place, "");
-            views.setTextViewText(R.id.w_maxmin, "");
-            views.setTextViewText(R.id.w_rain, stale
+            PixelText.set(views, context, R.id.w_temp, "--°", 46, WHITE);
+            PixelText.set(views, context, R.id.w_desc, stale ? "Sin conexión" : "Sin ubicación", 18, LILAC);
+            PixelText.set(views, context, R.id.w_place, "", 18, LILAC);
+            PixelText.set(views, context, R.id.w_maxmin, "", 22, WHITE);
+            PixelText.set(views, context, R.id.w_rain, stale
                 ? "No se pudo consultar el tiempo"
-                : "Abre Meteor Shower y elige tu ubicación");
+                : "Abre Meteor Shower y elige tu ubicación", 20, LILAC);
             views.setImageViewResource(R.id.w_icon, R.drawable.wx_partly_day);
-            views.setTextColor(R.id.w_rain, 0xFFD2BDFF);
             views.setViewVisibility(R.id.w_rain_icon, View.GONE);
             views.setViewVisibility(R.id.w_rain_row, View.VISIBLE);
-            views.setTextViewText(R.id.w_updated, "");
+            PixelText.set(views, context, R.id.w_updated, "", 16, DIM);
         } else {
             boolean wet = data.optBoolean("wet", false);
-            views.setTextViewText(R.id.w_temp, data.optString("temp", "--°"));
-            views.setTextViewText(R.id.w_desc, data.optString("desc", ""));
-            views.setTextViewText(R.id.w_place, data.optString("place", ""));
-            views.setTextViewText(R.id.w_maxmin, data.optString("maxmin", ""));
+            PixelText.set(views, context, R.id.w_temp, data.optString("temp", "--°"), 46, WHITE);
+            PixelText.set(views, context, R.id.w_desc, data.optString("desc", ""), 18, LILAC);
+            PixelText.set(views, context, R.id.w_place, data.optString("place", ""), 18, LILAC);
+            PixelText.set(views, context, R.id.w_maxmin, data.optString("maxmin", ""), 22, WHITE);
             // La lluvia solo aparece si va a llover hoy: texto azul con el paraguas pixel
-            views.setTextViewText(R.id.w_rain, data.optString("rain", ""));
-            views.setTextColor(R.id.w_rain, 0xFF86C9FF);
+            PixelText.set(views, context, R.id.w_rain, data.optString("rain", ""), 20, BLUE);
             views.setViewVisibility(R.id.w_rain_icon, View.VISIBLE);
             views.setViewVisibility(R.id.w_rain_row, wet ? View.VISIBLE : View.GONE);
             views.setImageViewResource(R.id.w_icon, iconRes(data.optString("icon", "cloudy")));
-            views.setTextViewText(R.id.w_updated, (stale ? "sin red " : "") + data.optString("updated", ""));
+            PixelText.set(views, context, R.id.w_updated, (stale ? "sin red " : "") + data.optString("updated", ""), 16, DIM);
         }
         PendingIntent open = openApp(context);
         if (open != null) views.setOnClickPendingIntent(R.id.w_root, open);
