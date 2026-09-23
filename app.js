@@ -72,6 +72,7 @@ const el = {
   cancelBtn: $('#cancelBtn'), loading: $('#loading'), error: $('#error'), errorMsg: $('#errorMsg'),
   retryBtn: $('#retryBtn'), errorChangeBtn: $('#errorChangeBtn'), weather: $('#weather'),
   welcomeTitle: $('#welcomeTitle'), placeChips: $('#placeChips'), savedPlaces: $('#savedPlaces'), savedList: $('#savedList'),
+  pull: $('#pull'), pullText: $('#pullText'),
   hero: $('#hero'), offline: $('#offline'), offlineText: $('#offlineText'), offlineRetry: $('#offlineRetry'), tabs: document.querySelectorAll('[role="tab"]'),
   panels: { hoy: $('#panel-hoy'), semana: $('#panel-semana'), mes: $('#panel-mes') }
 };
@@ -532,9 +533,7 @@ function renderToday() {
     ['drop', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)],
     ['cloudy', 'Nubosidad', `${num(c.cloud_cover)} %`, ''],
     ['gauge', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl).split(' · ')[0]],
-    ['eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`, ''],
-    ['sunrise', 'Amanecer', hhmm(d.sunrise[0]), ''],
-    ['sunset', 'Atardecer', hhmm(d.sunset[0]), `${duration(d.daylight_duration[0])} de luz`]
+    ['eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`, '']
   ].map(([icon, label, value, note]) => `
       <div class="fact">
         <dt>${px(icon, 'px-xs')} ${label}</dt>
@@ -548,6 +547,7 @@ function renderToday() {
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
+    ${renderSun(f)}
     ${renderAir()}
     ${renderNightSky(f)}
     <details class="card more"${state.moreOpen ? ' open' : ''}>
@@ -559,6 +559,65 @@ function renderToday() {
   const more = el.panels.hoy.querySelector('.more');
   more.addEventListener('toggle', () => { state.moreOpen = more.open; });
   checkBackground();
+}
+
+/* ---------- Sol: amanecer y atardecer ---------- */
+
+// Hora local del lugar (no la del móvil) en formato ISO «AAAA-MM-DDTHH:MM».
+const placeNow = (f) => new Date(Date.now() + (f.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 16);
+const minutesBetween = (a, b) => Math.round((Date.parse(`${b}Z`) - Date.parse(`${a}Z`)) / 60000);
+const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`);
+
+// Arco pixel del sol: la parte ya recorrida se ilumina y el sol marca por dónde va.
+function sunArc(frac) {
+  const W = 60;
+  const H = 22;
+  // Media elipse recorrida por ángulo, para que los puntos queden repartidos por igual.
+  const at = (t) => [2 + (W - 4) * (1 - Math.cos(Math.PI * t)) / 2, H - 2 - (H - 4) * Math.sin(Math.PI * t)];
+  let dots = '';
+  const N = 24;
+  for (let k = 0; k <= N; k++) {
+    const [x, y] = at(k / N).map(Math.round);
+    dots += `<rect x="${x}" y="${y}" width="1" height="1" fill="${k / N <= frac ? '#ffd35c' : 'rgba(215, 196, 255, 0.35)'}"/>`;
+  }
+  const on = frac >= 0 && frac <= 1;
+  const [sx, sy] = on ? at(frac) : [0, 0];
+  return `
+    <div class="sun-arc">
+      <svg viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges" aria-hidden="true">
+        ${dots}<rect x="0" y="${H - 1}" width="${W}" height="1" fill="rgba(215, 196, 255, 0.5)"/>
+      </svg>
+      ${on ? `<img class="px px-md sun-dot" src="icons/clear-day.svg" alt="" style="left:${(sx / W) * 100}%;top:${(sy / H) * 100}%">` : ''}
+    </div>`;
+}
+
+function renderSun(f) {
+  const d = f.daily;
+  const rise = d.sunrise[0];
+  const set = d.sunset[0];
+  if (!rise || !set) return '';
+  const now = placeNow(f);
+  const frac = (Date.parse(`${now}Z`) - Date.parse(`${rise}Z`)) / (Date.parse(`${set}Z`) - Date.parse(`${rise}Z`));
+  let status;
+  if (now < rise) status = `Amanece en ${hm(minutesBetween(now, rise))}`;
+  else if (now < set) status = `Quedan ${hm(minutesBetween(now, set))} de luz`;
+  else if (d.sunrise[1]) status = `Mañana amanece a las ${hhmm(d.sunrise[1])}`;
+  else status = 'Ya es de noche';
+  const change = d.daylight_duration[1] != null ? Math.round((d.daylight_duration[1] - d.daylight_duration[0]) / 60) : null;
+  const trend = change == null ? '' : change === 0 ? ' · mañana, igual' : ` · mañana ${Math.abs(change)} min ${change > 0 ? 'más' : 'menos'}`;
+  return `
+    <section class="card sun">
+      <h3>Sol</h3>
+      <div class="screen sun-screen">
+        ${sunArc(frac)}
+        <div class="sun-times">
+          <span>${px('sunrise', 'px-xs')} ${hhmm(rise)}</span>
+          <span>${hhmm(set)} ${px('sunset', 'px-xs')}</span>
+        </div>
+        <p class="sun-status">${status}</p>
+      </div>
+      <p class="sun-note">${duration(d.daylight_duration[0])} de luz hoy${trend}</p>
+    </section>`;
 }
 
 /* ---------- Cielo nocturno ---------- */
@@ -1372,6 +1431,38 @@ async function runSearch(query) {
   }
 }
 
+// Tirar hacia abajo desde arriba del todo actualiza, como en otras apps.
+const PULL_AT = 70;
+function bindPullToRefresh() {
+  let pull = null;
+  const hide = () => { el.pull.hidden = true; el.pull.style.removeProperty('--pull'); };
+  document.addEventListener('touchstart', (e) => {
+    pull = !el.weather.hidden && window.scrollY <= 0 && e.touches.length === 1
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, d: 0 } : null;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!pull) return;
+    const dx = e.touches[0].clientX - pull.x;
+    const dy = e.touches[0].clientY - pull.y;
+    if (pull.d === 0 && Math.abs(dx) > Math.abs(dy)) { pull = null; return; } // deslizar de lado
+    pull.d = Math.max(0, dy);
+    const ready = pull.d > PULL_AT;
+    el.pull.hidden = pull.d < 12;
+    el.pull.style.setProperty('--pull', `${Math.min(pull.d, PULL_AT * 1.4) * 0.6}px`);
+    el.pull.classList.toggle('is-ready', ready);
+    el.pullText.textContent = ready ? '↑ Suelta para actualizar' : '↓ Tira para actualizar';
+  }, { passive: true });
+  const end = () => {
+    if (!pull) return;
+    const go = pull.d > PULL_AT;
+    pull = null;
+    hide();
+    if (go) loadWeather({ quiet: true });
+  };
+  document.addEventListener('touchend', end);
+  document.addEventListener('touchcancel', () => { pull = null; hide(); });
+}
+
 function bindEvents() {
   el.locateBtn.addEventListener('click', locate);
   el.searchInput.addEventListener('input', () => {
@@ -1422,6 +1513,7 @@ function bindEvents() {
     state.forecast = null;
     showWelcome();
   });
+  bindPullToRefresh();
   el.retryBtn.addEventListener('click', () => loadWeather());
   el.refreshBtn.addEventListener('click', () => loadWeather({ quiet: true }));
   el.offlineRetry.addEventListener('click', () => loadWeather({ quiet: true }));
