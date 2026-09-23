@@ -1,0 +1,39 @@
+name: Probe APIs (temporal)
+on:
+  push:
+    branches: [probe-apis]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        run: |
+          H='Origin: https://localhost'
+          echo "=== RAINVIEWER"; curl -sS -D - -H "$H" https://api.rainviewer.com/public/weather-maps.json | head -c 1500; echo
+          P=$(curl -sS https://api.rainviewer.com/public/weather-maps.json | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['host']+d['radar']['past'][-1]['path'])")
+          echo "tile: $P"
+          for z in 6 7 8; do curl -sS -o /dev/null -w "z$z %{http_code} %{content_type} %{size_download}\n" -H "$H" "$P/256/$z/$((62*2**(z-7)))/$((48*2**(z-7)))/2/1_1.png"; done
+          curl -sS -D - -o /dev/null -H "$H" "$P/256/7/62/48/2/1_1.png" | head -20
+          curl -sS -o /dev/null -w "color4 %{http_code} %{size_download}\n" "$P/256/7/62/48/4/1_1.png"
+          curl -sS -o /dev/null -w "512 %{http_code} %{size_download}\n" "$P/512/7/62/48/2/1_1.png"
+          echo "=== CARTO"; curl -sS -D - -o /dev/null -H "$H" https://basemaps.cartocdn.com/dark_all/7/62/48.png | head -15
+          curl -sS -o /dev/null -w "a-sub %{http_code}\n" https://a.basemaps.cartocdn.com/dark_nolabels/7/62/48.png
+          echo "=== METEOALARM JSON"; curl -sS -D - -H "$H" https://feeds.meteoalarm.org/api/v1/warnings/feeds-spain -o ma.json | head -25
+          python3 - <<'PY'
+          import json
+          d=json.load(open('ma.json'))
+          print('top keys', list(d.keys()) if isinstance(d,dict) else type(d))
+          w=d.get('warnings',[])
+          print('count', len(w))
+          for x in w[:2]:
+              s=json.dumps(x, ensure_ascii=False)
+              print(s[:2500]); print('----')
+          # does any area have polygon?
+          poly=sum(1 for x in w for i in x.get('alert',{}).get('info',[]) for a in i.get('area',[]) if a.get('polygon'))
+          print('areas with polygon', poly)
+          langs=set(i.get('language') for x in w for i in x.get('alert',{}).get('info',[]))
+          print('langs', langs)
+          PY
+          echo "=== ATOM"; curl -sS https://feeds.meteoalarm.org/feeds/meteoalarm-legacy-atom-spain | head -c 2500; echo
+          echo "=== AIR pollen"; curl -sS "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=38.88&longitude=-6.97&hourly=grass_pollen,olive_pollen&forecast_days=2&timezone=auto" | head -c 600; echo
+          echo "=== FORECAST daily sunrise"; curl -sS "https://api.open-meteo.com/v1/forecast?latitude=38.88&longitude=-6.97&daily=sunrise,sunset,daylight_duration&past_days=1&forecast_days=2&timezone=auto" | head -c 800; echo
