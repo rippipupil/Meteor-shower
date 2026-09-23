@@ -18,7 +18,7 @@ import com.getcapacitor.annotation.PermissionCallback;
 /**
  * Puente entre la app web y la parte nativa:
  * - setPlace({ lat, lon, name, unit }): lugar principal para el widget y los avisos.
- * - setNotifications({ morning, morningTime, rain, ask }): activa o desactiva los
+ * - setNotifications({ morning, morningTime, rain, stormFrost, pollen, ask }): activa o desactiva los
  *   avisos; con ask = true pide permiso de notificaciones si hace falta.
  * - httpGet({ url }): descarga los avisos de MeteoAlarm, que no permite
  *   peticiones desde la web.
@@ -49,10 +49,12 @@ public class WidgetBridgePlugin extends Plugin {
     public void setNotifications(PluginCall call) {
         boolean morning = Boolean.TRUE.equals(call.getBoolean("morning", false));
         boolean rain = Boolean.TRUE.equals(call.getBoolean("rain", false));
+        boolean stormFrost = Boolean.TRUE.equals(call.getBoolean("stormFrost", false));
+        boolean pollen = Boolean.TRUE.equals(call.getBoolean("pollen", false));
         String time = call.getString("morningTime", "08:00");
-        NotifyReceiver.saveSettings(getContext(), morning, time, rain);
+        NotifyReceiver.saveSettings(getContext(), morning, time, rain, stormFrost, pollen);
         boolean needsPermission = Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications") != PermissionState.GRANTED;
-        if ((morning || rain) && needsPermission && Boolean.TRUE.equals(call.getBoolean("ask", false))) {
+        if ((morning || rain || stormFrost || pollen) && needsPermission && Boolean.TRUE.equals(call.getBoolean("ask", false))) {
             requestPermissionForAlias("notifications", call, "notificationsPermission");
             return;
         }

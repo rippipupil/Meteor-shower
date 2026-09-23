@@ -23,6 +23,7 @@ import java.util.Locale;
  * Avisos de Meteor Shower para el lugar principal:
  * - Resumen de la mañana, a la hora elegida.
  * - «Va a llover en 1 hora»: comprueba la previsión cada ~30 minutos.
+ * - La noche antes (21:00): tormentas o helada mañana, y polen alto mañana.
  * Se programan con AlarmManager (sin alarmas exactas, así que Android
  * puede retrasarlos unos minutos para ahorrar batería) y se vuelven a
  * programar al reiniciar el móvil o al actualizar la app.
@@ -31,19 +32,36 @@ public class NotifyReceiver extends BroadcastReceiver {
 
     static final String ACTION_MORNING = "com.rippipupil.meteorshower.MORNING";
     static final String ACTION_RAIN = "com.rippipupil.meteorshower.RAIN_CHECK";
+    static final String ACTION_EVENING = "com.rippipupil.meteorshower.EVENING";
     private static final String CHANNEL_MORNING = "morning";
     private static final String CHANNEL_RAIN = "rain";
+    private static final String CHANNEL_TOMORROW = "tomorrow";
+    private static final String EVENING_TIME = "21:00";
+    static final String AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+        + "?latitude=%s&longitude=%s&timezone=auto&forecast_days=2"
+        + "&hourly=grass_pollen,olive_pollen,birch_pollen,alder_pollen,mugwort_pollen,ragweed_pollen";
+    // Nivel «alto» de cada polen (granos/m³), los mismos umbrales que la app
+    private static final String[][] POLLEN = {
+        { "grass_pollen", "gramíneas", "50" }, { "olive_pollen", "olivo", "200" }, { "birch_pollen", "abedul", "100" },
+        { "alder_pollen", "aliso", "100" }, { "mugwort_pollen", "artemisa", "50" }, { "ragweed_pollen", "ambrosía", "20" }
+    };
     private static final long RAIN_INTERVAL = 30 * 60 * 1000L;
 
     /* ---------- Programación ---------- */
 
-    static void saveSettings(Context context, boolean morning, String morningTime, boolean rain) {
+    static void saveSettings(Context context, boolean morning, String morningTime, boolean rain, boolean stormFrost, boolean pollen) {
         prefs(context).edit()
             .putBoolean("morning", morning)
             .putString("morningTime", morningTime)
             .putBoolean("rainAlert", rain)
+            .putBoolean("stormFrost", stormFrost)
+            .putBoolean("pollen", pollen)
             .apply();
         reschedule(context);
+    }
+
+    private static boolean eveningOn(SharedPreferences p) {
+        return p.getBoolean("stormFrost", false) || p.getBoolean("pollen", false);
     }
 
     static void reschedule(Context context) {
@@ -52,8 +70,13 @@ public class NotifyReceiver extends BroadcastReceiver {
         if (am == null) return;
         PendingIntent morning = pending(context, ACTION_MORNING, 1);
         PendingIntent rain = pending(context, ACTION_RAIN, 2);
+        PendingIntent evening = pending(context, ACTION_EVENING, 3);
         am.cancel(morning);
         am.cancel(rain);
+        am.cancel(evening);
+        if (eveningOn(p)) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMorning(EVENING_TIME), evening);
+        }
         if (p.getBoolean("morning", false)) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMorning(p.getString("morningTime", "08:00")), morning);
         }
@@ -97,7 +120,7 @@ public class NotifyReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         final String action = intent.getAction();
         final Context app = context.getApplicationContext();
-        if (!ACTION_MORNING.equals(action) && !ACTION_RAIN.equals(action)) {
+        if (!ACTION_MORNING.equals(action) && !ACTION_RAIN.equals(action) && !ACTION_EVENING.equals(action)) {
             // Reinicio del móvil o actualización de la app: las alarmas se pierden.
             reschedule(app);
             WeatherWidgetProvider.requestUpdate(app);
@@ -107,6 +130,7 @@ public class NotifyReceiver extends BroadcastReceiver {
         new Thread(() -> {
             try {
                 if (ACTION_MORNING.equals(action)) morning(app);
+                else if (ACTION_EVENING.equals(action)) evening(app);
                 else rainCheck(app);
             } catch (Exception ignored) {
                 // sin red o sin datos: se vuelve a intentar en la siguiente alarma
@@ -123,6 +147,8 @@ public class NotifyReceiver extends BroadcastReceiver {
         if (am == null) return;
         if (ACTION_MORNING.equals(action) && p.getBoolean("morning", false)) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMorning(p.getString("morningTime", "08:00")), pending(context, ACTION_MORNING, 1));
+        } else if (ACTION_EVENING.equals(action) && eveningOn(p)) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMorning(EVENING_TIME), pending(context, ACTION_EVENING, 3));
         } else if (ACTION_RAIN.equals(action) && p.getBoolean("rainAlert", false)) {
             am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + RAIN_INTERVAL, pending(context, ACTION_RAIN, 2));
         }
@@ -182,6 +208,63 @@ public class NotifyReceiver extends BroadcastReceiver {
         }
     }
 
+    /** La noche antes: tormentas o helada mañana, y polen alto mañana. */
+    private static void evening(Context context) throws Exception {
+        SharedPreferences p = prefs(context);
+        String place = p.getString("name", "");
+        String where = place.isEmpty() ? "" : " en " + place;
+        if (p.getBoolean("stormFrost", false)) {
+            JSONObject data = forecast(context);
+            if (data != null) {
+                String tomorrow = data.getJSONObject("daily").getJSONArray("time").getString(1);
+                JSONObject hourly = data.getJSONObject("hourly");
+                JSONArray times = hourly.getJSONArray("time");
+                JSONArray codes = hourly.getJSONArray("weather_code");
+                String stormAt = null;
+                for (int i = 0; i < times.length(); i++) {
+                    if (times.getString(i).startsWith(tomorrow) && codes.optInt(i, 0) >= 95) {
+                        stormAt = times.getString(i).substring(11, 16);
+                        break;
+                    }
+                }
+                double min = data.getJSONObject("daily").getJSONArray("temperature_2m_min").getDouble(1);
+                boolean fahrenheit = "fahrenheit".equals(p.getString("unit", "celsius"));
+                boolean frost = min <= (fahrenheit ? 32 : 0);
+                if (stormAt != null || frost) {
+                    String title = stormAt != null && frost ? "Mañana: tormentas y helada"
+                        : stormAt != null ? "Mañana hay tormentas" : "Mañana helará";
+                    StringBuilder text = new StringBuilder();
+                    if (stormAt != null) text.append("Tormentas desde las ").append(stormAt).append(where).append(". ");
+                    if (frost) text.append("Mínima de ").append(Math.round(min)).append("°").append(where).append(": abrígate y cuidado con el hielo.");
+                    notify(context, 3, CHANNEL_TOMORROW, title, text.toString().trim());
+                }
+            }
+        }
+        if (p.getBoolean("pollen", false)) {
+            String lat = p.getString("lat", null);
+            String lon = p.getString("lon", null);
+            if (lat == null || lon == null) return;
+            JSONObject hourly = new JSONObject(WeatherWidgetProvider.download(String.format(Locale.US, AIR_URL, lat, lon)))
+                .getJSONObject("hourly");
+            JSONArray times = hourly.getJSONArray("time");
+            String tomorrow = times.getString(times.length() - 1).substring(0, 10);
+            StringBuilder high = new StringBuilder();
+            for (String[] kind : POLLEN) {
+                JSONArray values = hourly.optJSONArray(kind[0]);
+                if (values == null) continue;
+                double max = 0;
+                for (int i = 0; i < times.length(); i++) {
+                    if (times.getString(i).startsWith(tomorrow) && !values.isNull(i)) max = Math.max(max, values.getDouble(i));
+                }
+                if (max >= Double.parseDouble(kind[2])) high.append(high.length() == 0 ? "" : ", ").append(kind[1]);
+            }
+            if (high.length() > 0) {
+                notify(context, 4, CHANNEL_TOMORROW, "Mañana polen alto",
+                    "Polen de " + high + " alto" + where + ". Si tienes alergia, ten a mano tu medicación.");
+            }
+        }
+    }
+
     /* ---------- Notificaciones ---------- */
 
     private static void notify(Context context, int id, String channel, String title, String text) {
@@ -195,7 +278,8 @@ public class NotifyReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT >= 26) {
             if (nm.getNotificationChannel(channel) == null) {
                 boolean rain = CHANNEL_RAIN.equals(channel);
-                NotificationChannel ch = new NotificationChannel(channel, rain ? "Aviso de lluvia" : "Resumen de la mañana",
+                String label = rain ? "Aviso de lluvia" : CHANNEL_TOMORROW.equals(channel) ? "Tormenta, helada y polen" : "Resumen de la mañana";
+                NotificationChannel ch = new NotificationChannel(channel, label,
                     rain ? NotificationManager.IMPORTANCE_HIGH : NotificationManager.IMPORTANCE_DEFAULT);
                 nm.createNotificationChannel(ch);
             }

@@ -2,4 +2,8 @@
 <resources>
     <string name="widget_label">Meteor Shower</string>
     <string name="widget_description">Los grados, el cielo y si va a llover hoy y a qué hora</string>
+    <string name="clock_widget_label">Meteor Shower · Reloj</string>
+    <string name="clock_widget_description">La hora con el cielo y los grados</string>
+    <string name="week_widget_label">Meteor Shower · Semana</string>
+    <string name="week_widget_description">Los próximos 5 días</string>
 </resources>

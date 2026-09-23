@@ -49,6 +49,28 @@ RECEIVER = """        <receiver
                 android:resource="@xml/weather_widget_info" />
         </receiver>
         <receiver
+            android:name=".ClockWidgetProvider"
+            android:exported="false"
+            android:label="@string/clock_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clock_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".WeekWidgetProvider"
+            android:exported="false"
+            android:label="@string/week_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/week_widget_info" />
+        </receiver>
+        <receiver
             android:name=".NotifyReceiver"
             android:exported="false">
             <intent-filter>

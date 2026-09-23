@@ -43,6 +43,13 @@ Con la app instalada, mantén pulsado un hueco de la pantalla de inicio, toca **
 
 Usa la ubicación que elijas en la app y se actualiza solo cada 30 minutos, sin tener que abrirla (también tras reiniciar el móvil). Abajo a la derecha muestra la hora de la última actualización: tocando **↻** se actualiza al momento. Al tocar el resto del widget se abre la app.
 
+Hay otros dos widgets en la misma lista:
+
+- **Meteor Shower · Reloj** (2×1): la hora y la fecha como un reloj, con el icono del cielo y los grados.
+- **Meteor Shower · Semana** (4×2): los próximos 5 días con icono, máxima, mínima y probabilidad de lluvia cuando es alta.
+
+Los tres se actualizan juntos con una sola consulta.
+
 Si Android está ahorrando batería con la app, en la tarjeta **Avisos** aparece un botón **Permitir** para dejar que el widget y los avisos se actualicen en segundo plano. En algunos móviles (Xiaomi, Huawei, Samsung…) conviene además activar el *inicio automático* o quitar la app de «apps en suspensión». Su código nativo está en `android-src/` y se añade al proyecto Android durante el build.
 
 ### Avisos
@@ -51,8 +58,10 @@ En la tarjeta **Avisos** de la pestaña Hoy (solo en la app de Android) se puede
 
 - **Resumen de la mañana**: una notificación diaria, a la hora que elijas, con el tiempo del día y si va a llover.
 - **Si va a llover en 1 hora**: la app comprueba la previsión cada ~30 minutos y avisa si la próxima franja horaria trae lluvia (probabilidad ≥ 60 % o ≥ 0,5 mm). Como mucho un aviso cada 3 horas y nunca entre las 23:00 y las 07:00.
+- **Tormenta o helada mañana**: hacia las 21:00 avisa si mañana habrá tormentas (y desde qué hora) o si la mínima bajará de 0 °C.
+- **Polen alto mañana**: hacia las 21:00 avisa si mañana algún polen (gramíneas, olivo, abedul…) estará en nivel alto.
 
-Ambos usan el lugar principal (★), el mismo que el widget. Android puede retrasarlos unos minutos para ahorrar batería. El código está en `android-src/java/NotifyReceiver.java`.
+Todos usan el lugar principal (★), el mismo que el widget. Android puede retrasarlos unos minutos para ahorrar batería. El código está en `android-src/java/NotifyReceiver.java`.
 
 ## Abrirla en el navegador
 

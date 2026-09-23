@@ -29,6 +29,9 @@ import java.util.Locale;
  * si va a llover hoy y a qué hora. La app le pasa la ubicación elegida
  * (WidgetBridgePlugin) y el widget consulta Open-Meteo por su cuenta cada
  * 30 minutos, sin tener que abrir la app.
+ *
+ * Esta clase es también el «motor» de los otros widgets (reloj y semana):
+ * una sola descarga y una sola alarma actualizan todos los que haya puestos.
  */
 public class WeatherWidgetProvider extends AppWidgetProvider {
 
@@ -38,10 +41,23 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     // lo retrasa horas), así que el widget se programa su propia alarma.
     private static final long REFRESH_INTERVAL = 30 * 60 * 1000L;
     static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
-        + "?latitude=%s&longitude=%s&timezone=auto&forecast_days=2&temperature_unit=%s"
+        + "?latitude=%s&longitude=%s&timezone=auto&forecast_days=5&temperature_unit=%s"
         + "&current=temperature_2m,weather_code,is_day"
         + "&hourly=precipitation_probability,precipitation,weather_code"
-        + "&daily=temperature_2m_max,temperature_2m_min";
+        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max";
+    private static final String[] DAY_NAMES = { "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb" };
+
+    /** Todos los widgets colocados, de cualquier tipo. */
+    static int countAll(Context context) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        return ids(manager, context, WeatherWidgetProvider.class).length
+            + ids(manager, context, ClockWidgetProvider.class).length
+            + ids(manager, context, WeekWidgetProvider.class).length;
+    }
+
+    private static int[] ids(AppWidgetManager manager, Context context, Class<?> kind) {
+        return manager.getAppWidgetIds(new ComponentName(context, kind));
+    }
 
     public static void savePlace(Context context, double lat, double lon, String name, String unit) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -54,28 +70,25 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     /** Pide a todos los widgets colocados que se actualicen ya. */
     public static void requestUpdate(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-        if (ids.length == 0) return;
+        if (countAll(context) == 0) return;
         Intent intent = new Intent(context, WeatherWidgetProvider.class);
-        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        intent.setAction(ACTION_REFRESH);
         context.sendBroadcast(intent);
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (ACTION_REFRESH.equals(intent.getAction())) {
-            // Alarma de refresco o botón ↻ del propio widget
+            // Alarma de refresco, botón ↻ del widget o la app pidiendo actualizar
+            if (countAll(context) == 0) return;
             AppWidgetManager manager = AppWidgetManager.getInstance(context);
-            int[] ids = manager.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-            if (ids.length == 0) return;
-            if (intent.getBooleanExtra("manual", false)) {
+            int[] big = ids(manager, context, WeatherWidgetProvider.class);
+            if (intent.getBooleanExtra("manual", false) && big.length > 0) {
                 RemoteViews busy = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
                 busy.setTextViewText(R.id.w_updated, "actualizando…");
-                manager.partiallyUpdateAppWidget(ids, busy);
+                manager.partiallyUpdateAppWidget(big, busy);
             }
-            onUpdate(context, manager, ids);
+            onUpdate(context, manager, big);
             return;
         }
         super.onReceive(context, intent);
@@ -87,7 +100,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         final Context app = context.getApplicationContext();
         new Thread(() -> {
             try {
-                refresh(app, manager, ids);
+                refresh(app, manager);
             } catch (Exception ignored) {
                 // Si algo falla, el widget conserva lo último que mostraba.
             } finally {
@@ -99,7 +112,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onDisabled(Context context) {
-        // Se ha quitado el último widget: ya no hace falta la alarma.
+        // Se ha quitado el último widget (de cualquier tipo): ya no hace falta la alarma.
+        if (countAll(context) > 0) return;
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am != null) am.cancel(refreshIntent(context, false));
     }
@@ -108,8 +122,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     static void scheduleRefresh(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
-        int[] ids = AppWidgetManager.getInstance(context).getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-        if (ids.length == 0) return;
+        if (countAll(context) == 0) return;
         am.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + REFRESH_INTERVAL, refreshIntent(context, false));
     }
 
@@ -121,19 +134,19 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private static void refresh(Context context, AppWidgetManager manager, int[] ids) {
+    private static void refresh(Context context, AppWidgetManager manager) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String lat = prefs.getString("lat", null);
         String lon = prefs.getString("lon", null);
         if (lat == null || lon == null) {
-            render(context, manager, ids, null, false);
+            renderAll(context, manager, null, false);
             return;
         }
         try {
             String url = String.format(Locale.US, FORECAST_URL, lat, lon, prefs.getString("unit", "celsius"));
             JSONObject snapshot = summarize(new JSONObject(download(url)), prefs.getString("name", ""));
             prefs.edit().putString("last", snapshot.toString()).apply();
-            render(context, manager, ids, snapshot, false);
+            renderAll(context, manager, snapshot, false);
         } catch (Exception e) {
             JSONObject cached = null;
             try {
@@ -142,8 +155,24 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             } catch (Exception ignored) {
                 cached = null;
             }
-            render(context, manager, ids, cached, true);
+            renderAll(context, manager, cached, true);
         }
+    }
+
+    private static void renderAll(Context context, AppWidgetManager manager, JSONObject data, boolean stale) {
+        int[] big = ids(manager, context, WeatherWidgetProvider.class);
+        if (big.length > 0) render(context, manager, big, data, stale);
+        int[] clock = ids(manager, context, ClockWidgetProvider.class);
+        if (clock.length > 0) ClockWidgetProvider.render(context, manager, clock, data);
+        int[] week = ids(manager, context, WeekWidgetProvider.class);
+        if (week.length > 0) WeekWidgetProvider.render(context, manager, week, data);
+    }
+
+    /** Abre la app al tocar el widget. */
+    static PendingIntent openApp(Context context) {
+        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        if (launch == null) return null;
+        return PendingIntent.getActivity(context, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     static String download(String address) throws Exception {
@@ -184,6 +213,30 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         String[] rain = rainToday(hourly, now, code);
         out.put("rain", rain[0]);
         out.put("wet", "1".equals(rain[1]));
+        out.put("days", days(daily));
+        return out;
+    }
+
+    /** Los próximos días para el widget de semana. */
+    private static JSONArray days(JSONObject daily) throws Exception {
+        JSONArray times = daily.getJSONArray("time");
+        JSONArray codes = daily.optJSONArray("weather_code");
+        JSONArray max = daily.getJSONArray("temperature_2m_max");
+        JSONArray min = daily.getJSONArray("temperature_2m_min");
+        JSONArray probs = daily.optJSONArray("precipitation_probability_max");
+        JSONArray out = new JSONArray();
+        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        for (int i = 0; i < times.length() && i < 5; i++) {
+            cal.setTime(iso.parse(times.getString(i)));
+            JSONObject d = new JSONObject();
+            d.put("name", i == 0 ? "Hoy" : DAY_NAMES[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]);
+            d.put("icon", iconKey(codes == null ? 3 : codes.optInt(i, 3), true));
+            d.put("max", Math.round(max.getDouble(i)) + "°");
+            d.put("min", Math.round(min.getDouble(i)) + "°");
+            d.put("rain", probs == null || probs.isNull(i) ? 0 : probs.getInt(i));
+            out.put(d);
+        }
         return out;
     }
 
@@ -236,7 +289,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         return "rain";
     }
 
-    private static int iconRes(String key) {
+    static int iconRes(String key) {
         switch (key) {
             case "clear_day": return R.drawable.wx_clear_day;
             case "clear_night": return R.drawable.wx_clear_night;
@@ -310,12 +363,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             views.setImageViewResource(R.id.w_icon, iconRes(data.optString("icon", "cloudy")));
             views.setTextViewText(R.id.w_updated, (stale ? "sin red " : "") + data.optString("updated", ""));
         }
-        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-        if (launch != null) {
-            PendingIntent open = PendingIntent.getActivity(context, 0, launch,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            views.setOnClickPendingIntent(R.id.w_root, open);
-        }
+        PendingIntent open = openApp(context);
+        if (open != null) views.setOnClickPendingIntent(R.id.w_root, open);
         // Tocar la hora (con el icono ↻) actualiza sin abrir la app
         views.setOnClickPendingIntent(R.id.w_refresh, refreshIntent(context, true));
         for (int id : ids) manager.updateAppWidget(id, views);

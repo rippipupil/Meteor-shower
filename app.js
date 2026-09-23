@@ -963,7 +963,7 @@ function renderAir() {
 /* ---------- Avisos (solo en la app de Android) ---------- */
 
 const notifSupported = () => Boolean(widgetBridge() && typeof widgetBridge().setNotifications === 'function');
-const notifSettings = () => ({ morning: false, morningTime: '08:00', rain: false, ...(store.get(NOTIF_KEY) || {}) });
+const notifSettings = () => ({ morning: false, morningTime: '08:00', rain: false, stormFrost: false, pollen: false, ...(store.get(NOTIF_KEY) || {}) });
 
 function renderNotifCard() {
   if (!notifSupported()) return '';
@@ -981,7 +981,15 @@ function renderNotifCard() {
         <span>${px('umbrella', 'px-sm')} Si va a llover en 1 hora</span>
         ${toggle('rain', n.rain)}
       </div>
-      <p class="notif-msg" id="notifMsg">Para ${escapeHtml((state.places[0] || {}).name || 'tu lugar principal')}. Android puede retrasarlos unos minutos.</p>
+      <div class="notif-row">
+        <span>${px('storm', 'px-sm')} Tormenta o helada mañana</span>
+        ${toggle('stormFrost', n.stormFrost)}
+      </div>
+      <div class="notif-row">
+        <span>${px('flower', 'px-sm')} Polen alto mañana</span>
+        ${toggle('pollen', n.pollen)}
+      </div>
+      <p class="notif-msg" id="notifMsg">Para ${escapeHtml((state.places[0] || {}).name || 'tu lugar principal')}. Los de mañana llegan hacia las 21:00. Android puede retrasarlos unos minutos.</p>
       <div class="bg-row" id="bgRow" hidden>
         <p>Android está ahorrando batería con la app, así que el widget y los avisos pueden no actualizarse.</p>
         <button type="button" class="toggle" data-allow-bg>Permitir</button>
@@ -1007,7 +1015,7 @@ async function applyNotifications(ask) {
   try {
     const res = await widgetBridge().setNotifications({ ...n, ask });
     const msg = document.getElementById('notifMsg');
-    if (msg && (n.morning || n.rain) && res && res.granted === false) {
+    if (msg && (n.morning || n.rain || n.stormFrost || n.pollen) && res && res.granted === false) {
       msg.textContent = 'Permiso de notificaciones denegado. Actívalo en Ajustes › Apps › Meteor Shower.';
       msg.classList.add('is-error');
     }
