@@ -20,6 +20,8 @@ import com.getcapacitor.annotation.PermissionCallback;
  * - setPlace({ lat, lon, name, unit }): lugar principal para el widget y los avisos.
  * - setNotifications({ morning, morningTime, rain, ask }): activa o desactiva los
  *   avisos; con ask = true pide permiso de notificaciones si hace falta.
+ * - httpGet({ url }): descarga los avisos de MeteoAlarm, que no permite
+ *   peticiones desde la web.
  * - batteryStatus() / allowBackground(): ver y quitar el ahorro de batería de
  *   Android para la app, que es lo que suele impedir que el widget y los
  *   avisos se actualicen solos.
@@ -55,6 +57,24 @@ public class WidgetBridgePlugin extends Plugin {
             return;
         }
         resolveGranted(call);
+    }
+
+    @PluginMethod
+    public void httpGet(PluginCall call) {
+        final String url = call.getString("url", "");
+        if (!url.startsWith("https://feeds.meteoalarm.org/")) {
+            call.reject("Dirección no permitida");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                JSObject ret = new JSObject();
+                ret.put("data", WeatherWidgetProvider.download(url));
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject("Sin conexión");
+            }
+        }).start();
     }
 
     @PluginMethod

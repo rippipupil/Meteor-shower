@@ -13,6 +13,7 @@ const API = {
   air: 'https://air-quality-api.open-meteo.com/v1/air-quality',
   reverse: 'https://api.bigdatacloud.net/data/reverse-geocode-client',
   radar: 'https://api.rainviewer.com/public/weather-maps.json',
+  alerts: 'https://feeds.meteoalarm.org/api/v1/warnings/feeds-spain',
   basemap: 'https://basemaps.cartocdn.com/dark_all'
 };
 
@@ -24,6 +25,7 @@ const NOTIF_KEY = 'meteor-shower:notifications';
 const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
 const FORECAST_KEY = 'meteor-shower:forecast';
+const PROVINCE_KEY = 'meteor-shower:provinces';
 const CACHE_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // más viejo que esto ya no sirve
 const CLIMATE_YEARS = 10;
 const MONTH_DAYS = 30;
@@ -543,6 +545,7 @@ function renderToday() {
       </div>`).join('');
 
   el.panels.hoy.innerHTML = `
+    ${renderAlerts()}
     <section class="card advice">
       <h3>Resumen del día</h3>
       <ul class="summary-list">${buildAdvice(f).map(([icon, text]) => li(icon, text)).join('')}</ul>
@@ -741,6 +744,152 @@ function renderNightSky(f) {
         <li><img class="px px-sm" src="icon.svg" alt="" aria-hidden="true"><span><strong>${next.name}</strong> ${when(next)} (${date(next)}) · hasta ${next.zhr}/h · ${moonNote(next)}</span></li>
       </ul>
       <p class="night-later">Después: ${later.map((sh) => `${sh.name} ${date(sh)}`).join(' · ')}</p>
+    </section>`;
+}
+
+/* ---------- Avisos oficiales (AEMET vía MeteoAlarm) ---------- */
+
+// MeteoAlarm publica los avisos de AEMET por zonas (EMMA_ID), sin coordenadas.
+// Cada provincia tiene un tramo de zonas de tierra y algunas de costa (ES8xx).
+const ES_ZONES = {
+  AL: [70, 73], CA: [74, 77], CO: [78, 80], GR: [81, 84], H: [85, 88], J: [89, 91], MA: [92, 95], SE: [96, 98],
+  HU: [99, 101], TE: [102, 104], Z: [105, 107], O: [108, 112], PM: [113, 119], GC: [120, 124], TF: [125, 132],
+  S: [133, 136], AV: [137, 139], BU: [140, 144], LE: [145, 147], P: [148, 149], SA: [150, 152], SG: [153, 154],
+  SO: [155, 157], VA: [158, 158], ZA: [159, 160], AB: [161, 163], CR: [164, 167], CU: [168, 170], GU: [171, 173],
+  TO: [174, 177], B: [178, 181], GI: [182, 185], L: [186, 188], T: [189, 193], BA: [194, 197], CC: [198, 201],
+  C: [202, 205], LU: [206, 209], OR: [210, 214], PO: [215, 217], M: [218, 220], MU: [221, 225], NA: [226, 229],
+  VI: [230, 232], SS: [233, 234], BI: [235, 236], LO: [237, 238], A: [239, 241], CS: [242, 245], V: [246, 249],
+  CE: [250, 250], ML: [251, 251]
+};
+const ES_COAST = {
+  840: 'SS', 841: 'BI', 842: 'S', 843: 'O', 844: 'O', 845: 'LU', 846: 'C', 847: 'C', 848: 'C', 849: 'PO', 850: 'PO',
+  851: 'H', 852: 'CA', 853: 'CA', 854: 'MA', 855: 'MA', 856: 'GR', 857: 'AL', 858: 'AL', 859: 'MU', 860: 'MU',
+  861: 'A', 862: 'A', 863: 'V', 864: 'V', 865: 'CS', 866: 'CS', 867: 'T', 868: 'T', 869: 'B', 870: 'GI', 871: 'CE',
+  872: 'ML', 873: 'PM', 874: 'PM', 875: 'PM', 876: 'PM', 877: 'PM', 878: 'PM', 879: 'TF', 880: 'TF', 881: 'TF',
+  882: 'TF', 883: 'TF', 884: 'TF', 885: 'TF', 886: 'GC', 887: 'GC', 888: 'GC', 889: 'GC', 890: 'GI'
+};
+// Comunidades de una sola provincia: su código de comunidad → el de la provincia.
+const UNIPROVINCE = { 'ES-AS': 'O', 'ES-CB': 'S', 'ES-NC': 'NA', 'ES-RI': 'LO', 'ES-MC': 'MU', 'ES-MD': 'M', 'ES-IB': 'PM', 'ES-CE': 'CE', 'ES-ML': 'ML' };
+const UNIPROVINCE_NAMES = { 'islas baleares': 'PM', 'illes balears': 'PM', asturias: 'O', 'principado de asturias': 'O', cantabria: 'S', navarra: 'NA', 'comunidad foral de navarra': 'NA', 'la rioja': 'LO', 'region de murcia': 'MU', 'comunidad de madrid': 'M', ceuta: 'CE', melilla: 'ML' };
+const ALERT_TYPES = {
+  1: ['Viento', 'wind'], 2: ['Nieve y hielo', 'snow'], 3: ['Tormentas', 'storm'], 4: ['Niebla', 'fog'],
+  5: ['Calor', 'thermo'], 6: ['Frío', 'thermo'], 7: ['Fenómenos costeros', 'wind'], 8: ['Riesgo de incendios', 'thermo'],
+  9: ['Aludes', 'snow'], 10: ['Lluvia', 'rain'], 12: ['Inundaciones', 'rain'], 13: ['Lluvia e inundaciones', 'rain']
+};
+const ALERT_LEVELS = { 2: 'amarillo', 3: 'naranja', 4: 'rojo' };
+const plain = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+function zoneProvince(emma) {
+  const n = Number(String(emma).slice(2));
+  if (ES_COAST[n]) return ES_COAST[n];
+  return Object.keys(ES_ZONES).find((k) => n >= ES_ZONES[k][0] && n <= ES_ZONES[k][1]) || null;
+}
+
+// Provincia del lugar (solo España), guardada para no preguntarla cada vez.
+async function provinceOf(place) {
+  const key = `${place.lat.toFixed(2)},${place.lon.toFixed(2)}`;
+  const saved = store.get(PROVINCE_KEY) || {};
+  if (key in saved) return saved[key];
+  const params = new URLSearchParams({ latitude: place.lat, longitude: place.lon, localityLanguage: 'es' });
+  const d = await fetchJSON(`${API.reverse}?${params}`, 8000);
+  const adm = (d.localityInfo && d.localityInfo.administrative) || [];
+  let code = null;
+  if (d.countryCode === 'ES') {
+    const prov = adm.find((a) => a.adminLevel === 6 && /^ES-[A-Z]{1,2}$/.test(a.isoCode || ''));
+    const region = adm.find((a) => a.adminLevel === 4);
+    code = prov ? prov.isoCode.slice(3)
+      : (region && (UNIPROVINCE[region.isoCode] || UNIPROVINCE_NAMES[plain(region.name)])) || null;
+  }
+  saved[key] = code;
+  store.set(PROVINCE_KEY, saved);
+  return code;
+}
+
+// Avisos en vigor o próximos de la provincia, agrupados por fenómeno y nivel.
+function parseAlerts(data, prov, now = Date.now()) {
+  const seen = new Map();
+  for (const w of (data && data.warnings) || []) {
+    const alert = w.alert || {};
+    if (alert.msgType === 'Cancel') continue;
+    const info = (alert.info || []).find((i) => /^es/i.test(i.language || '')) || (alert.info || [])[0];
+    if (!info || Date.parse(info.expires) <= now) continue;
+    const param = (name) => ((info.parameter || []).find((p) => p.valueName === name) || {}).value || '';
+    const level = parseInt(param('awareness_level'), 10);
+    if (!ALERT_LEVELS[level]) continue; // verde o sin nivel
+    const type = parseInt(param('awareness_type'), 10);
+    for (const area of info.area || []) {
+      const emma = ((area.geocode || []).find((g) => g.valueName === 'EMMA_ID') || {}).value;
+      if (!emma || zoneProvince(emma) !== prov) continue;
+      const key = `${emma}|${type}|${info.onset}`;
+      const prev = seen.get(key);
+      if (prev && prev.sent >= alert.sent) continue;
+      seen.set(key, { sent: alert.sent || '', level, type, onset: info.onset, expires: info.expires, zone: area.areaDesc, text: info.description || '', event: info.event || '' });
+    }
+  }
+  const groups = new Map();
+  for (const a of seen.values()) {
+    const k = `${a.type}|${a.level}|${a.onset}|${a.expires}`;
+    if (groups.has(k)) groups.get(k).zones.push(a.zone);
+    else groups.set(k, { ...a, zones: [a.zone] });
+  }
+  return [...groups.values()].sort((a, b) => b.level - a.level || Date.parse(a.onset) - Date.parse(b.onset)).slice(0, 4);
+}
+
+// El servidor de MeteoAlarm no permite peticiones desde páginas web, así que
+// solo se consultan desde la app de Android (a través de la parte nativa).
+// El archivo de avisos de toda España pesa ~1,5 MB: se guarda 15 minutos en memoria.
+const alertFeed = { at: 0, data: null };
+async function loadAlerts(place) {
+  const bridge = widgetBridge();
+  if (!bridge || typeof bridge.httpGet !== 'function') return null;
+  const prov = await provinceOf(place);
+  if (!prov) return null;
+  if (!alertFeed.data || Date.now() - alertFeed.at > 15 * 60 * 1000) {
+    const res = await bridge.httpGet({ url: API.alerts });
+    alertFeed.data = JSON.parse(res.data);
+    alertFeed.at = Date.now();
+  }
+  return parseAlerts(alertFeed.data, prov);
+}
+
+function alertWhen(a) {
+  const tz = (state.forecast && state.forecast.timezone) || undefined;
+  const dayOf = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(t));
+  const time = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+  const today = dayOf(Date.now());
+  const tomorrow = dayOf(Date.now() + 86400000);
+  const day = (iso) => {
+    const d = dayOf(iso);
+    if (d === today) return 'hoy';
+    if (d === tomorrow) return 'mañana';
+    return new Intl.DateTimeFormat('es-ES', { timeZone: tz, weekday: 'long' }).format(new Date(iso));
+  };
+  const end = `${dayOf(a.expires) === dayOf(a.onset) ? '' : `${day(a.expires)} `}${time(a.expires)}`;
+  if (Date.parse(a.onset) <= Date.now()) return `Hasta ${dayOf(a.expires) === today ? '' : `${day(a.expires)} `}${time(a.expires)}`;
+  return `${cap(day(a.onset))} ${time(a.onset)} → ${end}`;
+}
+
+function renderAlerts() {
+  const list = state.alerts;
+  if (!Array.isArray(list) || !list.length) return '';
+  return `
+    <section class="card alerts">
+      <h3>Avisos oficiales</h3>
+      <ul class="alert-list">
+        ${list.map((a) => {
+          const [label, icon] = ALERT_TYPES[a.type] || [cap(a.event.replace(/^Aviso (de|por) /i, '').replace(/ de nivel \w+$/i, '')), 'storm'];
+          return `
+          <li class="alert lvl-${a.level}">
+            <span class="alert-badge" aria-hidden="true">${px(icon, 'px-sm')}</span>
+            <div>
+              <p class="alert-title">${escapeHtml(label)} · <strong>${ALERT_LEVELS[a.level]}</strong></p>
+              <p class="alert-sub">${escapeHtml(alertWhen(a))} · ${escapeHtml(joinEs(a.zones))}</p>
+              ${a.text ? `<p class="alert-text">${escapeHtml(a.text)}</p>` : ''}
+            </div>
+          </li>`;
+        }).join('')}
+      </ul>
+      <p class="alert-src">Fuente: AEMET vía MeteoAlarm</p>
     </section>`;
 }
 
@@ -1371,6 +1520,10 @@ async function loadWeather({ quiet = false } = {}) {
     showView('weather');
     syncWidget();
 
+    loadAlerts(place)
+      .then((alerts) => { if (id === state.requestId) { state.alerts = alerts; renderToday(); } })
+      .catch(() => {});
+
     state.air = null;
     loadAir(place)
       .then((air) => { if (id === state.requestId) { state.air = air; renderToday(); } })
@@ -1431,6 +1584,7 @@ function switchPlace(idx) {
   state.place = place;
   state.forecast = null;
   state.climate = null;
+  state.alerts = null;
   state.offlineSince = null;
   savePlaces();
   renderPlaceChips();
