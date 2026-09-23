@@ -14,6 +14,7 @@ const API = {
 };
 
 const PLACE_KEY = 'meteor-shower:place';
+const WIDGET_HINT_KEY = 'meteor-shower:widget-hint';
 const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
 const CLIMATE_YEARS = 10;
@@ -22,46 +23,43 @@ const WEEK_DAYS = 7;
 const SMOOTH = 3; // media móvil de ±3 días para suavizar la climatología
 const STALE_MS = 30 * 60 * 1000;
 
-// Códigos meteorológicos de la OMM que devuelve Open-Meteo.
+// Códigos meteorológicos de la OMM que devuelve Open-Meteo, con el icono
+// pixel art de día y de noche (archivos de icons/).
 const WMO = {
-  0: ['Despejado', '☀️', '🌙', 'clear'],
-  1: ['Mayormente despejado', '🌤️', '🌙', 'clear'],
-  2: ['Parcialmente nuboso', '⛅', '☁️', 'cloudy'],
-  3: ['Cubierto', '☁️', '☁️', 'cloudy'],
-  45: ['Niebla', '🌫️', '🌫️', 'fog'],
-  48: ['Niebla con escarcha', '🌫️', '🌫️', 'fog'],
-  51: ['Llovizna débil', '🌦️', '🌧️', 'rain'],
-  53: ['Llovizna', '🌦️', '🌧️', 'rain'],
-  55: ['Llovizna intensa', '🌧️', '🌧️', 'rain'],
-  56: ['Llovizna helada', '🌧️', '🌧️', 'rain'],
-  57: ['Llovizna helada intensa', '🌧️', '🌧️', 'rain'],
-  61: ['Lluvia débil', '🌦️', '🌧️', 'rain'],
-  63: ['Lluvia', '🌧️', '🌧️', 'rain'],
-  65: ['Lluvia fuerte', '🌧️', '🌧️', 'rain'],
-  66: ['Lluvia helada', '🌧️', '🌧️', 'rain'],
-  67: ['Lluvia helada fuerte', '🌧️', '🌧️', 'rain'],
-  71: ['Nevada débil', '🌨️', '🌨️', 'snow'],
-  73: ['Nevada', '🌨️', '🌨️', 'snow'],
-  75: ['Nevada intensa', '❄️', '❄️', 'snow'],
-  77: ['Granizo fino', '🌨️', '🌨️', 'snow'],
-  80: ['Chubascos débiles', '🌦️', '🌧️', 'rain'],
-  81: ['Chubascos', '🌧️', '🌧️', 'rain'],
-  82: ['Chubascos muy fuertes', '⛈️', '⛈️', 'storm'],
-  85: ['Chubascos de nieve', '🌨️', '🌨️', 'snow'],
-  86: ['Chubascos de nieve fuertes', '❄️', '❄️', 'snow'],
-  95: ['Tormenta', '⛈️', '⛈️', 'storm'],
-  96: ['Tormenta con granizo', '⛈️', '⛈️', 'storm'],
-  99: ['Tormenta fuerte con granizo', '⛈️', '⛈️', 'storm']
+  0: ['Despejado', 'clear-day', 'clear-night'],
+  1: ['Mayormente despejado', 'clear-day', 'clear-night'],
+  2: ['Parcialmente nuboso', 'partly-day', 'partly-night'],
+  3: ['Cubierto', 'cloudy', 'cloudy'],
+  45: ['Niebla', 'fog', 'fog'],
+  48: ['Niebla con escarcha', 'fog', 'fog'],
+  51: ['Llovizna débil', 'drizzle', 'drizzle'],
+  53: ['Llovizna', 'drizzle', 'drizzle'],
+  55: ['Llovizna intensa', 'drizzle', 'drizzle'],
+  56: ['Llovizna helada', 'drizzle', 'drizzle'],
+  57: ['Llovizna helada intensa', 'drizzle', 'drizzle'],
+  61: ['Lluvia débil', 'rain', 'rain'],
+  63: ['Lluvia', 'rain', 'rain'],
+  65: ['Lluvia fuerte', 'rain', 'rain'],
+  66: ['Lluvia helada', 'rain', 'rain'],
+  67: ['Lluvia helada fuerte', 'rain', 'rain'],
+  71: ['Nevada débil', 'snow', 'snow'],
+  73: ['Nevada', 'snow', 'snow'],
+  75: ['Nevada intensa', 'snow', 'snow'],
+  77: ['Granizo fino', 'snow', 'snow'],
+  80: ['Chubascos débiles', 'rain', 'rain'],
+  81: ['Chubascos', 'rain', 'rain'],
+  82: ['Chubascos muy fuertes', 'storm', 'storm'],
+  85: ['Chubascos de nieve', 'snow', 'snow'],
+  86: ['Chubascos de nieve fuertes', 'snow', 'snow'],
+  95: ['Tormenta', 'storm', 'storm'],
+  96: ['Tormenta con granizo', 'storm', 'storm'],
+  99: ['Tormenta fuerte con granizo', 'storm', 'storm']
 };
-
-const SKY_COLORS = {
-  clear: '#1b5aa6', night: '#0b1330', cloudy: '#3c4f66',
-  rain: '#263648', storm: '#1b1f2e', snow: '#3e5876', fog: '#4b5563'
-};
+const SNOW_CODES = [71, 73, 75, 77, 85, 86];
 
 const $ = (sel) => document.querySelector(sel);
 const el = {
-  placeName: $('#placeName'), placeDetail: $('#placeDetail'), actions: $('#actions'),
+  place: $('#place'), placeName: $('#placeName'), placeDetail: $('#placeDetail'), actions: $('#actions'),
   unitBtn: $('#unitBtn'), refreshBtn: $('#refreshBtn'), changeBtn: $('#changeBtn'),
   welcome: $('#welcome'), locateBtn: $('#locateBtn'), searchForm: $('#searchForm'),
   searchInput: $('#searchInput'), searchResults: $('#searchResults'), welcomeMsg: $('#welcomeMsg'),
@@ -138,9 +136,17 @@ const tDelta = (c) => (isF() ? c * 9 / 5 : c);
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function wmo(code, isDay = true) {
-  const w = WMO[code] || ['Sin datos', '🌡️', '🌡️', 'cloudy'];
-  return { text: w[0], icon: isDay ? w[1] : w[2], sky: w[3] };
+  const w = WMO[code] || ['Sin datos', 'cloudy', 'cloudy'];
+  return { text: w[0], icon: isDay ? w[1] : w[2] };
 }
+
+// Icono pixel art. Los tamaños se fijan por CSS (px-hero, px-md, px-sm…).
+const px = (key, cls = '') => `<img class="px ${cls}" src="icons/${key}.svg" alt="" aria-hidden="true">`;
+const li = (icon, html) => `<li>${px(icon, 'px-sm')}<span>${html}</span></li>`;
+
+// El puente con Android solo existe dentro del APK: guarda la ubicación
+// para que el widget de la pantalla de inicio pueda consultar el tiempo.
+const widgetBridge = () => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WidgetBridge;
 
 function dayLabel(iso, index, long = false) {
   if (index === 0) return 'Hoy';
@@ -301,6 +307,7 @@ async function searchPlaces(query) {
 function showView(name) {
   for (const view of ['welcome', 'loading', 'error', 'weather']) el[view].hidden = view !== name;
   el.actions.hidden = name !== 'weather';
+  el.place.hidden = !state.place || name === 'welcome';
 }
 
 function showWelcome() {
@@ -308,11 +315,6 @@ function showWelcome() {
   el.searchInput.value = '';
   el.searchResults.innerHTML = '';
   setWelcomeMsg('');
-  if (!state.forecast) {
-    el.placeName.textContent = 'Meteor Shower';
-    el.placeDetail.textContent = '';
-    setSky('clear');
-  }
   showView('welcome');
 }
 
@@ -326,12 +328,6 @@ function showError(message) {
   showView('error');
 }
 
-function setSky(sky) {
-  document.body.dataset.sky = sky;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = SKY_COLORS[sky] || SKY_COLORS.clear;
-}
-
 function renderHeader() {
   el.placeName.textContent = state.place.name;
   el.placeDetail.textContent = state.place.detail || '';
@@ -340,17 +336,23 @@ function renderHeader() {
 }
 
 function renderHero() {
-  const { current: c, daily: d } = state.forecast;
+  const f = state.forecast;
+  const { current: c, daily: d } = f;
   const w = wmo(c.weather_code, c.is_day);
-  setSky(w.sky === 'clear' && !c.is_day ? 'night' : w.sky);
+  const rt = rainTiming(f);
   el.hero.innerHTML = `
+    <div class="lcd-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="lcd-top">
+      <span>${cap(fmtDate(d.time[0], { weekday: 'long', day: 'numeric', month: 'short' })).replace('.', '')}</span>
+      <span>${hhmm(c.time)} h</span>
+    </div>
     <div class="hero-main">
-      <span class="hero-icon" aria-hidden="true">${w.icon}</span>
+      ${px(w.icon, 'px-hero')}
       <span class="hero-temp">${temp(c.temperature_2m)}</span>
     </div>
     <p class="hero-desc">${w.text}</p>
     <p class="hero-sub">Sensación ${temp(c.apparent_temperature)} · Máx ${temp(d.temperature_2m_max[0])} · Mín ${temp(d.temperature_2m_min[0])}</p>
-    <p class="hero-time">${cap(fmtDate(d.time[0], { weekday: 'long', day: 'numeric', month: 'long' }))} · ${hhmm(c.time)} hora local</p>`;
+    <p class="hero-rain ${rt.wet ? 'is-wet' : ''}">${px(rt.wet ? 'umbrella' : 'check', 'px-xs')}<span>${rt.text}</span></p>`;
 }
 
 function currentHourIndex(f) {
@@ -362,29 +364,50 @@ function currentHourIndex(f) {
   return next === -1 ? 0 : next;
 }
 
+// Primera hora de lo que queda de hoy en la que se espera lluvia (o nieve).
+function rainTiming(f) {
+  const h = f.hourly;
+  const today = f.current.time.slice(0, 10);
+  let first = -1;
+  let best = -1;
+  for (let i = currentHourIndex(f); i < h.time.length && h.time[i].startsWith(today); i += 1) {
+    const prob = h.precipitation_probability[i] ?? 0;
+    if (first === -1 && (prob >= 50 || (h.precipitation[i] ?? 0) >= 0.3)) first = i;
+    if (best === -1 || prob > (h.precipitation_probability[best] ?? 0)) best = i;
+  }
+  const code = f.current.weather_code;
+  if (code >= 51) return { wet: true, text: SNOW_CODES.includes(code) ? 'Nevando ahora' : 'Lloviendo ahora' };
+  if (first !== -1) {
+    const what = SNOW_CODES.includes(h.weather_code[first]) ? 'Nieve' : 'Lluvia';
+    const prob = h.precipitation_probability[first];
+    return { wet: true, text: `${what} hoy a las ${hhmm(h.time[first])}${prob != null ? ` (${prob} %)` : ''}` };
+  }
+  const bestProb = best === -1 ? 0 : (h.precipitation_probability[best] ?? 0);
+  if (bestProb >= 25) return { wet: false, text: `Poca lluvia: ${bestProb} % a las ${hhmm(h.time[best])}` };
+  return { wet: false, text: 'Sin lluvia prevista hoy' };
+}
+
 function buildAdvice(f) {
   const d = f.daily;
   const tips = [];
   const prob = d.precipitation_probability_max[0] ?? 0;
   const rain = d.precipitation_sum[0] ?? 0;
   const code = d.weather_code[0];
-  if (code >= 95) tips.push('⛈️ Posibles tormentas: evita zonas abiertas si oyes truenos.');
-  if ([71, 73, 75, 77, 85, 86].includes(code)) tips.push('❄️ Se espera nieve: precaución en carretera y aceras.');
-  if (prob >= 60 || rain >= 2) {
-    tips.push(`☂️ Lleva paraguas: ${prob} % de probabilidad de lluvia (≈ ${num(rain, 1)} mm).`);
-  } else if (prob >= 30) {
-    tips.push(`🌦️ Posibles chubascos (${prob} % de probabilidad).`);
-  }
+  const rt = rainTiming(f);
+  if (code >= 95) tips.push(['storm', 'Posibles tormentas: evita zonas abiertas si oyes truenos.']);
+  if (SNOW_CODES.includes(code)) tips.push(['snow', 'Se espera nieve: precaución en carretera y aceras.']);
+  if (rt.wet) tips.push(['umbrella', `${rt.text}: lleva paraguas (≈ ${num(rain, 1)} mm en el día).`]);
+  else if (prob >= 30 && rt.text !== 'Sin lluvia prevista hoy') tips.push(['drizzle', `${rt.text}.`]);
   const uv = d.uv_index_max[0];
-  if (uv != null && uv >= 6) tips.push(`🧴 Índice UV ${uvLevel(uv).toLowerCase()} (${num(uv)}): usa protección solar en las horas centrales.`);
+  if (uv != null && uv >= 6) tips.push(['clear-day', `Índice UV ${uvLevel(uv).toLowerCase()} (${num(uv)}): usa protección solar en las horas centrales.`]);
   const max = d.temperature_2m_max[0];
   const min = d.temperature_2m_min[0];
-  if (max >= tUnit(32)) tips.push('🥵 Calor intenso: bebe agua y evita el sol a mediodía.');
-  if (min <= tUnit(3)) tips.push('🧥 Frío a primera hora y por la noche: abrígate bien.');
-  else if (max - min >= tDelta(12)) tips.push(`🧥 Gran diferencia entre el día y la noche (${Math.round(max - min)}°): lleva una chaqueta.`);
+  if (max >= tUnit(32)) tips.push(['thermo', 'Calor intenso: bebe agua y evita el sol a mediodía.']);
+  if (min <= tUnit(3)) tips.push(['thermo', 'Frío a primera hora y por la noche: abrígate bien.']);
+  else if (max - min >= tDelta(12)) tips.push(['thermo', `Gran diferencia entre el día y la noche (${Math.round(max - min)}°): lleva una chaqueta.`]);
   const gusts = d.wind_gusts_10m_max[0];
-  if (gusts >= 50) tips.push(`💨 Rachas fuertes de viento de hasta ${Math.round(gusts)} km/h.`);
-  if (!tips.length) tips.push('✅ Día tranquilo, sin incidencias destacables.');
+  if (gusts >= 50) tips.push(['wind', `Rachas fuertes de viento de hasta ${Math.round(gusts)} km/h.`]);
+  if (!tips.length) tips.push(['check', 'Día tranquilo, sin incidencias destacables.']);
   return tips;
 }
 
@@ -415,15 +438,15 @@ function renderHourly(f) {
     return `
       <li class="hour" title="${w.text}">
         <span class="hour-time">${k === 0 ? 'Ahora' : hhmm(h.time[i])}</span>
-        <span class="hour-icon" aria-hidden="true">${w.icon}</span>
-        <span class="hour-rain ${prob >= 30 ? 'is-wet' : ''}">💧${prob == null ? '–' : `${prob}%`}</span>
+        ${px(w.icon, 'px-md')}
+        <span class="hour-rain ${prob >= 30 ? 'is-wet' : ''}">${prob == null ? '–' : `${prob}%`}</span>
       </li>`;
   }).join('');
 
   return `
     <section class="card">
       <h3>Próximas 24 horas</h3>
-      <div class="hours-scroll">
+      <div class="screen hours-scroll">
         <div class="hours" style="width:${width}px">
           <svg class="hours-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true">
             <polyline points="${points}"></polyline>${labels}
@@ -437,7 +460,7 @@ function renderHourly(f) {
 function detailTile(icon, label, value, sub = '') {
   return `
     <div class="tile">
-      <span class="tile-label"><span aria-hidden="true">${icon}</span> ${label}</span>
+      <span class="tile-label">${px(icon, 'px-xs')} ${label}</span>
       <span class="tile-value">${value}</span>
       ${sub ? `<span class="tile-sub">${sub}</span>` : ''}
     </div>`;
@@ -452,19 +475,19 @@ function renderToday() {
   const vis = f.hourly.visibility[hi];
 
   const tiles = [
-    detailTile('🌡️', 'Sensación', temp(c.apparent_temperature), `Temperatura real ${temp(c.temperature_2m)}`),
-    detailTile('💧', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)),
-    detailTile('💨', 'Viento', `${num(c.wind_speed_10m)} km/h ${windArrow(c.wind_direction_10m)}`,
+    detailTile('thermo', 'Sensación', temp(c.apparent_temperature), `Temperatura real ${temp(c.temperature_2m)}`),
+    detailTile('drop', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)),
+    detailTile('wind', 'Viento', `${num(c.wind_speed_10m)} km/h ${windArrow(c.wind_direction_10m)}`,
       `Del ${compass(c.wind_direction_10m)} · rachas ${num(c.wind_gusts_10m)} km/h`),
-    detailTile('☔', 'Lluvia hoy', `${num(d.precipitation_sum[0], 1)} mm`,
+    detailTile('umbrella', 'Lluvia hoy', `${num(d.precipitation_sum[0], 1)} mm`,
       `Probabilidad ${d.precipitation_probability_max[0] ?? '–'} %${d.precipitation_hours[0] ? ` · ${num(d.precipitation_hours[0])} h` : ''}`),
-    detailTile('🔆', 'Índice UV', num(d.uv_index_max[0]), `${uvLevel(d.uv_index_max[0])} · ahora ${num(uvNow)}`),
-    detailTile('☁️', 'Nubosidad', `${num(c.cloud_cover)} %`, wmo(c.weather_code, c.is_day).text),
-    detailTile('🧭', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl)),
-    detailTile('👁️', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`,
+    detailTile('clear-day', 'Índice UV', num(d.uv_index_max[0]), `${uvLevel(d.uv_index_max[0])} · ahora ${num(uvNow)}`),
+    detailTile('cloudy', 'Nubosidad', `${num(c.cloud_cover)} %`, wmo(c.weather_code, c.is_day).text),
+    detailTile('gauge', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl)),
+    detailTile('eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`,
       vis == null ? '' : vis < 1000 ? 'Muy reducida' : vis < 5000 ? 'Reducida' : 'Buena'),
-    detailTile('🌅', 'Amanecer', hhmm(d.sunrise[0]), `${duration(d.daylight_duration[0])} de luz`),
-    detailTile('🌇', 'Atardecer', hhmm(d.sunset[0]), 'Hora local')
+    detailTile('sunrise', 'Amanecer', hhmm(d.sunrise[0]), `${duration(d.daylight_duration[0])} de luz`),
+    detailTile('sunset', 'Atardecer', hhmm(d.sunset[0]), 'Hora local')
   ].join('');
 
   let normal = '';
@@ -486,11 +509,52 @@ function renderToday() {
   el.panels.hoy.innerHTML = `
     <section class="card advice">
       <h3>Resumen del día</h3>
-      <ul>${buildAdvice(f).map((t) => `<li>${t}</li>`).join('')}</ul>
+      <ul class="summary-list">${buildAdvice(f).map(([icon, text]) => li(icon, text)).join('')}</ul>
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
-    ${normal}`;
+    ${normal}
+    ${widgetHint()}`;
+}
+
+function widgetHint() {
+  if (!widgetBridge() || store.get(WIDGET_HINT_KEY)) return '';
+  return `
+    <section class="card widget-hint">
+      <h3>Widget en la pantalla de inicio</h3>
+      <p>Mantén pulsado un hueco de la pantalla de inicio, toca <strong>Widgets</strong> y arrastra <strong>Meteor Shower</strong>.
+      Verás los grados, el cielo y si va a llover hoy sin abrir la app.</p>
+      <button type="button" class="link-btn" data-dismiss-widget-hint>Entendido</button>
+    </section>`;
+}
+
+// Pasa la ubicación al widget de Android para que se actualice solo.
+function syncWidget() {
+  const bridge = widgetBridge();
+  if (!bridge || !state.place) return;
+  const { lat, lon, name } = state.place;
+  Promise.resolve(bridge.setPlace({ lat, lon, name, unit: state.unit })).catch(() => {});
+}
+
+// Burbujas de fondo con tamaños, velocidades y posiciones al azar.
+function createBubbles() {
+  const box = document.getElementById('bubbles');
+  if (!box || box.childElementCount) return;
+  const count = window.innerWidth < 600 ? 44 : 64;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < count; i += 1) {
+    const b = document.createElement('i');
+    const size = Math.round(7 + Math.random() ** 1.7 * 30);
+    const dur = 14 + Math.random() * 24;
+    b.style.left = `${(Math.random() * 100).toFixed(1)}%`;
+    b.style.width = b.style.height = `${size}px`;
+    b.style.animationDuration = `${dur.toFixed(1)}s`;
+    // Retraso negativo: desde el primer momento hay burbujas repartidas por la pantalla.
+    b.style.animationDelay = `${(-Math.random() * dur).toFixed(1)}s`;
+    b.style.setProperty('--drift', `${Math.round(Math.random() * 70 - 35)}px`);
+    frag.appendChild(b);
+  }
+  box.appendChild(frag);
 }
 
 function renderWeek() {
@@ -520,8 +584,8 @@ function renderWeek() {
         <details class="day">
           <summary>
             <span class="day-name">${dayLabel(d.time[i], i)}</span>
-            <span class="day-icon" title="${w.text}" aria-hidden="true">${w.icon}</span>
-            <span class="day-rain ${prob >= 30 ? 'is-wet' : ''}">${prob ? `💧${prob}%` : ''}</span>
+            <span class="day-icon" title="${w.text}">${px(w.icon, 'px-md')}</span>
+            <span class="day-rain ${prob >= 30 ? 'is-wet' : ''}">${prob ? `${prob}%` : ''}</span>
             <span class="day-min">${temp(min)}</span>
             <span class="range" aria-hidden="true"><span style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%"></span></span>
             <span class="day-max">${temp(max)}</span>
@@ -529,10 +593,10 @@ function renderWeek() {
           <div class="day-details">
             <p><strong>${w.text}</strong> · sensación entre ${temp(d.apparent_temperature_min[i])} y ${temp(d.apparent_temperature_max[i])}</p>
             <dl>
-              <div><dt>☔ Lluvia</dt><dd>${num(d.precipitation_sum[i], 1)} mm · ${prob ?? '–'} %</dd></div>
-              <div><dt>💨 Viento</dt><dd>${num(d.wind_speed_10m_max[i])} km/h del ${compass(d.wind_direction_10m_dominant[i])} · rachas ${num(d.wind_gusts_10m_max[i])}</dd></div>
-              <div><dt>🔆 UV máx.</dt><dd>${num(d.uv_index_max[i])} · ${uvLevel(d.uv_index_max[i])}</dd></div>
-              <div><dt>🌅 Sol</dt><dd>${hhmm(d.sunrise[i])} – ${hhmm(d.sunset[i])}</dd></div>
+              <div><dt>Lluvia</dt><dd>${num(d.precipitation_sum[i], 1)} mm · ${prob ?? '–'} %</dd></div>
+              <div><dt>Viento</dt><dd>${num(d.wind_speed_10m_max[i])} km/h del ${compass(d.wind_direction_10m_dominant[i])} · rachas ${num(d.wind_gusts_10m_max[i])}</dd></div>
+              <div><dt>UV máx.</dt><dd>${num(d.uv_index_max[i])} · ${uvLevel(d.uv_index_max[i])}</dd></div>
+              <div><dt>Sol</dt><dd>${hhmm(d.sunrise[i])} – ${hhmm(d.sunset[i])}</dd></div>
             </dl>
           </div>
         </details>
@@ -543,9 +607,9 @@ function renderWeek() {
     <section class="card">
       <h3>Resumen de la semana</h3>
       <ul class="summary-list">
-        <li>🌡️ Día más caluroso: <strong>${dayLabel(d.time[warmest], warmest, true).toLowerCase()}</strong> con ${temp(d.temperature_2m_max[warmest])}.</li>
-        <li>🌙 Noche más fría: <strong>${dayLabel(d.time[coldest], coldest, true).toLowerCase()}</strong> con ${temp(d.temperature_2m_min[coldest])}.</li>
-        <li>☔ ${rainText}</li>
+        ${li('thermo', `Día más caluroso: <strong>${dayLabel(d.time[warmest], warmest, true).toLowerCase()}</strong> con ${temp(d.temperature_2m_max[warmest])}.`)}
+        ${li('clear-night', `Noche más fría: <strong>${dayLabel(d.time[coldest], coldest, true).toLowerCase()}</strong> con ${temp(d.temperature_2m_min[coldest])}.`)}
+        ${li('umbrella', rainText)}
       </ul>
     </section>
     <section class="card">
@@ -573,7 +637,7 @@ function monthDays() {
         icon: wmo(d.weather_code[i]).icon, text: wmo(d.weather_code[i]).text
       });
     } else if (normal) {
-      const icon = normal.rainChance >= 0.4 ? '🌧️' : normal.rainChance >= 0.2 ? '🌦️' : '🌤️';
+      const icon = normal.rainChance >= 0.4 ? 'rain' : normal.rainChance >= 0.2 ? 'drizzle' : 'partly-day';
       days.push({
         iso, forecast: false, normal,
         max: normal.max, min: normal.min, rain: normal.rain, rainChance: normal.rainChance,
@@ -640,8 +704,8 @@ function renderMonth() {
   const climReady = state.climate && state.climate !== 'error';
 
   let summary = `
-    <li>🌡️ Próximas ${fc.length === 16 ? 'dos semanas' : `${fc.length} días`}: máximas de ${temp(mean(fc.map((x) => x.max)))} y mínimas de ${temp(mean(fc.map((x) => x.min)))} de media.</li>
-    <li>☔ ${fc.filter((x) => x.rainy).length} días con lluvia probable en la previsión (≈ ${num(sum(fc.map((x) => x.rain)), 0)} mm).</li>`;
+    ${li('thermo', `Próximas ${fc.length === 16 ? 'dos semanas' : `${fc.length} días`}: máximas de ${temp(mean(fc.map((x) => x.max)))} y mínimas de ${temp(mean(fc.map((x) => x.min)))} de media.`)}
+    ${li('umbrella', `${fc.filter((x) => x.rainy).length} días con lluvia probable en la previsión (≈ ${num(sum(fc.map((x) => x.rain)), 0)} mm).`)}`;
 
   if (climReady && fc.length && cl.length) {
     const fcNormal = mean(fc.map((x) => x.normal.max));
@@ -651,8 +715,8 @@ function renderMonth() {
       : `Unos ${num(Math.abs(diff), 1)}° ${diff > 0 ? 'más cálido' : 'más fresco'} de lo normal para estas fechas.`;
     const expectedRain = cl.reduce((a, x) => a + x.rainChance, 0);
     summary += `
-      <li>📈 ${trend}</li>
-      <li>📅 Del ${fmtDate(cl[0].iso, { day: 'numeric', month: 'long' })} en adelante lo habitual es ${temp(mean(cl.map((x) => x.max)))} de máxima y ${temp(mean(cl.map((x) => x.min)))} de mínima, con unos ${Math.round(expectedRain)} días de lluvia.</li>`;
+      ${li('gauge', trend)}
+      ${li('partly-day', `Del ${fmtDate(cl[0].iso, { day: 'numeric', month: 'long' })} en adelante lo habitual es ${temp(mean(cl.map((x) => x.max)))} de máxima y ${temp(mean(cl.map((x) => x.min)))} de mínima, con unos ${Math.round(expectedRain)} días de lluvia.`)}`;
   }
 
   const blanks = (isoToDate(days[0].iso).getUTCDay() + 6) % 7;
@@ -660,12 +724,12 @@ function renderMonth() {
   const cells = days.map((x, i) => {
     const dayNum = isoToDate(x.iso).getUTCDate();
     const label = i === 0 ? 'Hoy' : dayNum === 1 ? `1 ${fmtDate(x.iso, { month: 'short' }).replace('.', '')}` : dayNum;
-    const rainMark = x.forecast ? (x.rainy ? '<span class="cal-drop">💧</span>' : '') : '';
+    const rainMark = x.forecast && x.rainy ? px('drop', 'cal-drop') : '';
     return `
       <div class="cal-day ${x.forecast ? '' : 'is-normal'} ${i === 0 ? 'is-today' : ''}"
            title="${cap(fmtDate(x.iso, { weekday: 'long', day: 'numeric', month: 'long' }))}: ${x.text}. Máx ${temp(x.max)}, mín ${temp(x.min)}${x.rain != null ? `, ${num(x.rain, 1)} mm` : ''}">
         <span class="cal-num">${label}</span>
-        <span class="cal-icon" aria-hidden="true">${x.icon}</span>
+        ${px(x.icon, 'cal-icon')}
         <span class="cal-max">${x.forecast ? '' : '≈'}${temp(x.max)}</span>
         <span class="cal-min">${temp(x.min)}</span>
         ${rainMark}
@@ -684,7 +748,7 @@ function renderMonth() {
     </section>
     <section class="card">
       <h3>Evolución de las temperaturas</h3>
-      ${renderMonthChart(days)}
+      <div class="screen">${renderMonthChart(days)}</div>
     </section>
     <section class="card">
       <h3>Calendario</h3>
@@ -723,6 +787,7 @@ async function loadWeather({ quiet = false } = {}) {
     state.loadedAt = Date.now();
     renderAll();
     showView('weather');
+    syncWidget();
 
     loadClimate(place, data.daily.time[0], unit)
       .then((climate) => { if (id === state.requestId) state.climate = climate; })
@@ -780,6 +845,7 @@ function locate() {
         Object.assign(place, named);
         store.set(PLACE_KEY, place);
         renderHeaderFromPlace();
+        syncWidget();
       }
     } catch { /* se queda con las coordenadas */ }
   }, (err) => {
@@ -850,6 +916,12 @@ function bindEvents() {
     loadWeather({ quiet: true });
   });
   el.tabs.forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
+  el.panels.hoy.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-dismiss-widget-hint]')) return;
+    store.set(WIDGET_HINT_KEY, true);
+    const card = e.target.closest('.widget-hint');
+    if (card) card.remove();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.forecast && !el.weather.hidden && Date.now() - state.loadedAt > STALE_MS) {
       loadWeather({ quiet: true });
@@ -857,6 +929,7 @@ function bindEvents() {
   });
 }
 
+createBubbles();
 bindEvents();
 if (state.place) {
   renderHeaderFromPlace();

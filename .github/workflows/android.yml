@@ -41,17 +41,16 @@ jobs:
         run: |
           mkdir -p www
           cp index.html app.js styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png www/
+          cp -r icons fonts www/
 
       - name: Crear proyecto Android
         run: npx cap add android
 
-      # La app usa navigator.geolocation; Capacitor pide el permiso al
-      # usuario, pero Android exige que esté declarado en el manifiesto.
-      - name: Declarar el permiso de ubicación
-        run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-feature android:name="android.hardware.location" android:required="false" />\n</manifest>#' "$MANIFEST"
-          grep -q ACCESS_COARSE_LOCATION "$MANIFEST"
+      # Widget de la pantalla de inicio, puente con la web y permiso de
+      # ubicación: el código nativo vive en android-src/ y se copia al
+      # proyecto que Capacitor acaba de generar.
+      - name: Añadir el widget y los permisos
+        run: python3 android-src/install.py android
 
       - name: Generar el icono de la app a partir de assets/
         run: npx @capacitor/assets generate --android

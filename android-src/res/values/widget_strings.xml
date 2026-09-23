@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_label">Meteor Shower</string>
+    <string name="widget_description">Los grados, el cielo y si va a llover hoy y a qué hora</string>
+</resources>

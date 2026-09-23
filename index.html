@@ -5,32 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Meteor Shower</title>
   <meta name="description" content="El tiempo de hoy, de la semana y del mes en tu ubicación, con datos meteorológicos reales.">
-  <meta name="theme-color" content="#1b5aa6">
+  <meta name="theme-color" content="#eee6ff">
   <meta name="apple-mobile-web-app-title" content="Meteor Shower">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preload" href="fonts/vt323-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/pixelify-sans-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body data-sky="clear">
+<body>
+  <div class="bubbles" id="bubbles" aria-hidden="true"></div>
+
   <main class="app">
     <header class="topbar">
-      <div class="place">
-        <h1 id="placeName">Meteor Shower</h1>
-        <p id="placeDetail"></p>
+      <div class="brand">
+        <img class="brand-mark" src="icon.svg" alt="" width="36" height="36">
+        <span class="brand-name">Meteor <span>Shower</span></span>
       </div>
       <div class="actions" id="actions" hidden>
-        <button id="unitBtn" class="icon-btn" type="button" aria-label="Cambiar a grados Fahrenheit">°C</button>
-        <button id="refreshBtn" class="icon-btn" type="button" aria-label="Actualizar">↻</button>
-        <button id="changeBtn" class="icon-btn" type="button" aria-label="Cambiar ubicación">📍</button>
+        <button id="unitBtn" class="chrome-btn" type="button" aria-label="Cambiar a grados Fahrenheit">°C</button>
+        <button id="refreshBtn" class="chrome-btn" type="button" aria-label="Actualizar">↻</button>
+        <button id="changeBtn" class="chrome-btn" type="button" aria-label="Cambiar ubicación">
+          <svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor">
+            <rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="6" height="1"/>
+            <rect x="0" y="2" width="3" height="2"/><rect x="5" y="2" width="3" height="2"/>
+            <rect x="1" y="4" width="6" height="1"/><rect x="2" y="5" width="4" height="1"/>
+            <rect x="3" y="6" width="2" height="2"/>
+          </svg>
+        </button>
       </div>
     </header>
+
+    <div class="place" id="place" hidden>
+      <h1 id="placeName"></h1>
+      <p id="placeDetail"></p>
+    </div>
 
     <section id="welcome" class="card welcome" hidden>
       <img class="welcome-icon" src="icon.svg" alt="" width="96" height="96">
       <h2>¿Qué tiempo hace donde estás?</h2>
       <p>Comparte tu ubicación para ver el tiempo de hoy, de la semana y del mes, con datos meteorológicos reales.</p>
-      <button id="locateBtn" class="primary-btn" type="button">📍 Usar mi ubicación</button>
+      <button id="locateBtn" class="primary-btn" type="button">Usar mi ubicación</button>
       <div class="divider"><span>o busca una ciudad</span></div>
       <form id="searchForm" class="search" role="search">
         <input id="searchInput" type="search" placeholder="Madrid, Buenos Aires, Lima…" autocomplete="off" aria-label="Buscar ciudad">
@@ -41,8 +57,7 @@
     </section>
 
     <section id="loading" class="loading" hidden>
-      <div class="spinner" aria-hidden="true"></div>
-      <p>Consultando el tiempo…</p>
+      <div class="lcd lcd-loading"><span class="blink" aria-hidden="true">▮</span> Consultando el tiempo…</div>
     </section>
 
     <section id="error" class="card error" hidden>
@@ -54,7 +69,7 @@
     </section>
 
     <section id="weather" hidden>
-      <div id="hero" class="hero"></div>
+      <div id="hero" class="lcd hero"></div>
 
       <nav class="tabs" role="tablist" aria-label="Periodo">
         <button role="tab" type="button" data-tab="hoy" aria-selected="true" aria-controls="panel-hoy">Hoy</button>
