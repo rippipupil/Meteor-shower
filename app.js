@@ -345,6 +345,7 @@ function renderHero() {
   const { current: c, daily: d } = f;
   const w = wmo(c.weather_code, c.is_day);
   const rt = rainTiming(f);
+  setSky(skyMode(c));
   el.hero.innerHTML = `
     <div class="lcd-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="lcd-top">
@@ -401,7 +402,8 @@ function buildAdvice(f) {
   const rt = rainTiming(f);
   if (code >= 95) tips.push(['storm', 'Tormentas posibles']);
   if (SNOW_CODES.includes(code)) tips.push(['snow', 'Nieve · cuidado al conducir']);
-  if (rt.wet) tips.push(['umbrella', `${rt.text} · lleva paraguas`]);
+  if (rt.wet && /^Nev|^Nieve/.test(rt.text)) tips.push(['snow', `${rt.text} · abrígate`]);
+  else if (rt.wet) tips.push(['umbrella', `${rt.text} · lleva paraguas`]);
   else if (prob >= 30 && rt.text !== 'Sin lluvia prevista hoy') tips.push(['drizzle', rt.text]);
   const uv = d.uv_index_max[0];
   if (uv != null && uv >= 6) tips.push(['clear-day', `UV ${uvLevel(uv).toLowerCase()} (${num(uv)}) · usa protector`]);
@@ -546,23 +548,61 @@ function syncWidget() {
   Promise.resolve(bridge.setPlace({ lat, lon, name, unit: state.unit })).catch(() => {});
 }
 
-// Burbujas de fondo con tamaños, velocidades y posiciones al azar.
-function createBubbles() {
+// Fondo animado según el tiempo que hace ahora: burbujas con cielo seco,
+// gotas si llueve, copos si nieva, rayos si hay tormenta y estrellas (con
+// alguna estrella fugaz) en las noches despejadas.
+function skyMode(c) {
+  const code = c.weather_code;
+  if (code >= 95 || code === 82) return 'storm';
+  if (SNOW_CODES.includes(code)) return 'snow';
+  if (code >= 51) return 'rain';
+  if (!c.is_day && code <= 2) return 'night';
+  return 'bubbles';
+}
+
+const rand = (min, max) => min + Math.random() * (max - min);
+
+function particle(cls, styles) {
+  const i = document.createElement('i');
+  if (cls) i.className = cls;
+  Object.assign(i.style, styles);
+  return i;
+}
+
+function setSky(mode) {
   const box = document.getElementById('bubbles');
-  if (!box || box.childElementCount) return;
-  const count = window.innerWidth < 600 ? 44 : 64;
+  if (!box || box.dataset.mode === mode) return;
+  box.dataset.mode = mode;
+  document.body.dataset.sky = mode;
+  box.textContent = '';
+  const small = window.innerWidth < 600;
   const frag = document.createDocumentFragment();
-  for (let i = 0; i < count; i += 1) {
-    const b = document.createElement('i');
-    const size = Math.round(7 + Math.random() ** 1.7 * 30);
-    const dur = 14 + Math.random() * 24;
-    b.style.left = `${(Math.random() * 100).toFixed(1)}%`;
-    b.style.width = b.style.height = `${size}px`;
-    b.style.animationDuration = `${dur.toFixed(1)}s`;
-    // Retraso negativo: desde el primer momento hay burbujas repartidas por la pantalla.
-    b.style.animationDelay = `${(-Math.random() * dur).toFixed(1)}s`;
-    b.style.setProperty('--drift', `${Math.round(Math.random() * 70 - 35)}px`);
-    frag.appendChild(b);
+  const fall = (cls, n, durMin, durMax, extra) => {
+    for (let k = 0; k < n; k += 1) {
+      const dur = rand(durMin, durMax);
+      // Retraso negativo: desde el primer momento hay partículas por toda la pantalla.
+      frag.appendChild(particle(cls, { left: `${rand(0, 100).toFixed(1)}%`, animationDuration: `${dur.toFixed(2)}s`, animationDelay: `${(-rand(0, dur)).toFixed(2)}s`, ...extra() }));
+    }
+  };
+  if (mode === 'rain' || mode === 'storm') {
+    fall('drop', small ? 55 : 80, 0.7, 1.3, () => ({ height: `${Math.round(rand(10, 18))}px`, opacity: rand(0.55, 0.95).toFixed(2) }));
+    if (mode === 'storm') frag.appendChild(particle('flash', {}));
+  } else if (mode === 'snow') {
+    fall('flake', small ? 45 : 70, 7, 14, () => {
+      const size = `${[4, 4, 6, 8][Math.floor(rand(0, 4))]}px`;
+      return { width: size, height: size, '--sway': `${Math.round(rand(-40, 40))}px` };
+    });
+  } else if (mode === 'night') {
+    for (let k = 0; k < (small ? 45 : 70); k += 1) {
+      const size = `${[2, 2, 3, 4][Math.floor(rand(0, 4))]}px`;
+      frag.appendChild(particle('star', { left: `${rand(0, 100).toFixed(1)}%`, top: `${rand(0, 100).toFixed(1)}%`, width: size, height: size, animationDuration: `${rand(1.5, 4).toFixed(2)}s`, animationDelay: `${(-rand(0, 4)).toFixed(2)}s` }));
+    }
+    frag.appendChild(particle('shooting', {}));
+  } else {
+    fall('', small ? 44 : 64, 14, 38, () => {
+      const size = `${Math.round(7 + Math.random() ** 1.7 * 30)}px`;
+      return { width: size, height: size, '--drift': `${Math.round(rand(-35, 35))}px` };
+    });
   }
   box.appendChild(frag);
 }
@@ -987,7 +1027,7 @@ function bindEvents() {
   });
 }
 
-createBubbles();
+setSky('bubbles');
 bindEvents();
 if (state.place) {
   renderHeaderFromPlace();
