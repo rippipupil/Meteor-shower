@@ -10,6 +10,7 @@ const API = {
   forecast: 'https://api.open-meteo.com/v1/forecast',
   archive: 'https://archive-api.open-meteo.com/v1/archive',
   geocode: 'https://geocoding-api.open-meteo.com/v1/search',
+  air: 'https://air-quality-api.open-meteo.com/v1/air-quality',
   reverse: 'https://api.bigdatacloud.net/data/reverse-geocode-client'
 };
 
@@ -546,6 +547,7 @@ function renderToday() {
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
+    ${renderAir()}
     ${renderNightSky(f)}
     <details class="card more"${state.moreOpen ? ' open' : ''}>
       <summary><h3>Más detalles</h3></summary>
@@ -675,6 +677,71 @@ function renderNightSky(f) {
         <li><img class="px px-sm" src="icon.svg" alt="" aria-hidden="true"><span><strong>${next.name}</strong> ${when(next)} (${date(next)}) · hasta ${next.zhr}/h · ${moonNote(next)}</span></li>
       </ul>
       <p class="night-later">Después: ${later.map((sh) => `${sh.name} ${date(sh)}`).join(' · ')}</p>
+    </section>`;
+}
+
+/* ---------- Aire y polen ---------- */
+
+// Índice europeo de calidad del aire (escala de la Agencia Europea de Medio Ambiente).
+const AQI_LEVELS = [[20, 'Buena'], [40, 'Razonable'], [60, 'Moderada'], [80, 'Mala'], [100, 'Muy mala'], [Infinity, 'Extremadamente mala']];
+// Polen en granos/m³ con umbrales aproximados de nivel bajo / moderado / alto por especie.
+const POLLEN = [
+  ['grass_pollen', 'Gramíneas', 20, 50],
+  ['olive_pollen', 'Olivo', 50, 200],
+  ['birch_pollen', 'Abedul', 10, 100],
+  ['alder_pollen', 'Aliso', 10, 100],
+  ['mugwort_pollen', 'Artemisa', 10, 50],
+  ['ragweed_pollen', 'Ambrosía', 5, 20]
+];
+
+async function loadAir(place) {
+  const params = new URLSearchParams({
+    latitude: place.lat,
+    longitude: place.lon,
+    timezone: 'auto',
+    forecast_days: 1,
+    hourly: ['european_aqi', 'pm2_5', 'ozone', ...POLLEN.map(([k]) => k)].join(',')
+  });
+  return fetchJSON(`${API.air}?${params}`, 12000);
+}
+
+function renderAir() {
+  const a = state.air;
+  if (!a || !a.hourly || !a.hourly.european_aqi) return '';
+  const h = a.hourly;
+  const now = state.forecast.current.time.slice(0, 13);
+  let i = h.time.findIndex((t) => t.slice(0, 13) === now);
+  if (i === -1) i = 0;
+  const aqi = h.european_aqi[i];
+  if (aqi == null) return '';
+  const level = AQI_LEVELS.find(([max]) => aqi < max)[1];
+  const pos = Math.min(aqi, 100);
+  // Máximo de hoy para cada tipo de polen con datos
+  const pollen = POLLEN.map(([key, name, mid, high]) => {
+    const vals = (h[key] || []).filter((v) => v != null);
+    if (!vals.length) return null;
+    const max = Math.max(...vals);
+    return { name, max, level: max >= high ? 'alto' : max >= mid ? 'moderado' : max >= 1 ? 'bajo' : null };
+  }).filter(Boolean);
+  const present = pollen.filter((p) => p.level).sort((x, y) => y.max - x.max);
+  let pollenHtml = '';
+  if (pollen.length) {
+    pollenHtml = present.length
+      ? `<ul class="pollen">${present.map((p) => `<li class="lvl-${p.level}">${p.name}: ${p.level}</li>`).join('')}</ul>`
+      : '<p class="pollen-none">Polen: casi nada hoy</p>';
+  }
+  return `
+    <section class="card air">
+      <h3>Aire y polen</h3>
+      <div class="aqi">
+        <span class="aqi-value">${Math.round(aqi)}</span>
+        <div class="aqi-info">
+          <span class="aqi-level">Calidad ${level.toLowerCase()}</span>
+          <span class="aqi-bar" aria-hidden="true"><i style="left:${pos}%"></i></span>
+          <span class="aqi-sub">PM2,5 ${num(h.pm2_5[i])} · ozono ${num(h.ozone[i])} µg/m³</span>
+        </div>
+      </div>
+      ${pollenHtml}
     </section>`;
 }
 
@@ -1030,6 +1097,11 @@ async function loadWeather({ quiet = false } = {}) {
     renderOffline();
     showView('weather');
     syncWidget();
+
+    state.air = null;
+    loadAir(place)
+      .then((air) => { if (id === state.requestId) { state.air = air; renderToday(); } })
+      .catch(() => {});
 
     loadClimate(place, data.daily.time[0], unit)
       .then((climate) => { if (id === state.requestId) state.climate = climate; })
