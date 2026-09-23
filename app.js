@@ -221,7 +221,7 @@ function forecastUrl(place, unit) {
     temperature_unit: unit,
     wind_speed_unit: 'kmh',
     current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,uv_index,visibility',
+    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,uv_index,visibility,cloud_cover',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,sunrise,sunset,daylight_duration,uv_index_max,precipitation_sum,precipitation_probability_max,precipitation_hours,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant'
   });
   return `${API.forecast}?${params}`;
@@ -520,6 +520,7 @@ function renderToday() {
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
+    ${renderNightSky(f)}
     <details class="card more"${state.moreOpen ? ' open' : ''}>
       <summary><h3>Más detalles</h3></summary>
       <dl class="facts">${facts}</dl>
@@ -527,6 +528,128 @@ function renderToday() {
     ${widgetHint()}`;
   const more = el.panels.hoy.querySelector('.more');
   more.addEventListener('toggle', () => { state.moreOpen = more.open; });
+}
+
+/* ---------- Cielo nocturno ---------- */
+
+// Fase lunar calculada a partir de una luna nueva conocida (6 ene 2000,
+// 18:14 UTC) y del mes sinódico medio. Error típico: menos de un día.
+const SYNODIC = 29.530588853;
+const REF_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+function moonAge(date) {
+  const days = (date.getTime() - REF_NEW_MOON) / 86400000;
+  return ((days % SYNODIC) + SYNODIC) % SYNODIC;
+}
+const moonLight = (age) => (1 - Math.cos((2 * Math.PI * age) / SYNODIC)) / 2;
+function moonPhaseName(age) {
+  const names = ['Luna nueva', 'Luna creciente', 'Cuarto creciente', 'Gibosa creciente', 'Luna llena', 'Gibosa menguante', 'Cuarto menguante', 'Luna menguante'];
+  return names[Math.round((age / SYNODIC) * 8) % 8];
+}
+
+// Dibujo pixel de la luna con la parte iluminada según la fase
+// (hemisferio norte: crece por la derecha).
+function moonSvg(age, size = 56) {
+  const n = 16;
+  const r = 6.5;
+  const k = Math.cos((2 * Math.PI * age) / SYNODIC);
+  const waxing = age < SYNODIC / 2;
+  let rects = '';
+  for (let y = 0; y < n; y += 1) {
+    for (let x = 0; x < n; x += 1) {
+      const dx = (x + 0.5 - n / 2) / r;
+      const dy = (y + 0.5 - n / 2) / r;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 1) continue;
+      const w = Math.sqrt(1 - dy * dy);
+      const lit = waxing ? dx > k * w : dx < -k * w;
+      const edge = d2 > 0.78;
+      const fill = lit ? (edge ? '#e3c46a' : '#fff0b3') : (edge ? '#2b1b47' : '#3a2860');
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}"/>`;
+    }
+  }
+  return `<svg class="moon" viewBox="0 0 ${n} ${n}" width="${size}" height="${size}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
+
+// Lluvias de estrellas principales (fecha habitual del máximo y tasa
+// horaria cenital aproximada, según el calendario de la IMO).
+const METEOR_SHOWERS = [
+  { name: 'Cuadrántidas', month: 1, day: 3, zhr: 110 },
+  { name: 'Líridas', month: 4, day: 22, zhr: 18 },
+  { name: 'Eta Acuáridas', month: 5, day: 6, zhr: 50 },
+  { name: 'Delta Acuáridas', month: 7, day: 30, zhr: 25 },
+  { name: 'Perseidas', month: 8, day: 12, zhr: 100 },
+  { name: 'Dracónidas', month: 10, day: 8, zhr: 10 },
+  { name: 'Oriónidas', month: 10, day: 21, zhr: 20 },
+  { name: 'Leónidas', month: 11, day: 17, zhr: 15 },
+  { name: 'Gemínidas', month: 12, day: 14, zhr: 150 },
+  { name: 'Úrsidas', month: 12, day: 22, zhr: 10 }
+];
+
+function upcomingShowers(todayIso, count = 3) {
+  const today = isoToDate(todayIso);
+  const year = today.getUTCFullYear();
+  const list = [];
+  for (const y of [year, year + 1]) {
+    for (const m of METEOR_SHOWERS) {
+      const peak = new Date(Date.UTC(y, m.month - 1, m.day));
+      const days = Math.round((peak - today) / 86400000);
+      if (days >= -1) list.push({ ...m, peak, days, moon: moonLight(moonAge(new Date(peak.getTime() + 2 * 3600000))) });
+    }
+  }
+  return list.sort((a, b) => a.days - b.days).slice(0, count);
+}
+
+// ¿Se verán las estrellas? Nubosidad media entre las 21:00 y las 05:00.
+function starsTonight(f) {
+  const h = f.hourly;
+  if (!h.cloud_cover) return null;
+  const now = f.current.time;
+  const today = now.slice(0, 10);
+  const lateNight = Number(now.slice(11, 13)) < 5;
+  const from = lateNight ? now.slice(0, 13) : `${today}T21`;
+  const to = lateNight ? `${today}T05` : `${addDays(today, 1)}T05`;
+  const hours = [];
+  for (let i = 0; i < h.time.length; i += 1) {
+    const t = h.time[i].slice(0, 13);
+    if (t >= from && t <= to && h.cloud_cover[i] != null) hours.push({ t: h.time[i], c: h.cloud_cover[i] });
+  }
+  if (!hours.length) return null;
+  const avg = mean(hours.map((x) => x.c));
+  const best = hours.reduce((a, b) => (b.c < a.c ? b : a));
+  if (avg < 25) return { icon: 'clear-night', good: true, text: 'Despejado · se verán las estrellas' };
+  if (avg < 60) return { icon: 'partly-night', good: true, text: `Nubes a ratos · mejor hacia las ${hhmm(best.t)}` };
+  return { icon: 'cloudy', good: false, text: 'Cubierto · no se verán las estrellas' };
+}
+
+function renderNightSky(f) {
+  const now = new Date();
+  const age = moonAge(now);
+  const light = Math.round(moonLight(age) * 100);
+  const daysToFull = ((SYNODIC / 2 - age) + SYNODIC) % SYNODIC;
+  const nextFull = new Date(now.getTime() + daysToFull * 86400000);
+  const fullText = daysToFull < 1 ? 'hoy' : nextFull.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+  const stars = starsTonight(f);
+  const [next, ...later] = upcomingShowers(f.daily.time[0]);
+  const when = (sh) => (sh.days <= 0 ? '¡esta noche!' : sh.days === 1 ? 'mañana' : `en ${sh.days} días`);
+  const moonNote = (sh) => (sh.moon > 0.6 ? 'la luna molestará' : sh.moon > 0.3 ? 'algo de luna' : 'sin luna, ideal');
+  const date = (sh) => sh.peak.toLocaleDateString('es-ES', { timeZone: 'UTC', day: 'numeric', month: 'short' }).replace('.', '');
+  return `
+    <section class="card night">
+      <h3>Cielo nocturno</h3>
+      <div class="screen night-moon">
+        ${moonSvg(age)}
+        <div>
+          <p class="night-phase">${moonPhaseName(age)}</p>
+          <p class="night-sub">${light} % iluminada</p>
+          <p class="night-sub">Luna llena: ${fullText}</p>
+        </div>
+      </div>
+      <ul class="summary-list">
+        ${stars ? li(stars.icon, `Esta noche: ${stars.text}${stars.good && light > 70 ? ' (mucha luna)' : ''}`) : ''}
+        <li><img class="px px-sm" src="icon.svg" alt="" aria-hidden="true"><span><strong>${next.name}</strong> ${when(next)} (${date(next)}) · hasta ${next.zhr}/h · ${moonNote(next)}</span></li>
+      </ul>
+      <p class="night-later">Después: ${later.map((sh) => `${sh.name} ${date(sh)}`).join(' · ')}</p>
+    </section>`;
 }
 
 function widgetHint() {

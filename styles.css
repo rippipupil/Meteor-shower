@@ -392,6 +392,14 @@ body[data-sky="rain"]::before, body[data-sky="storm"]::before { background: radi
 .tile-sub { font-family: var(--font-pixel); font-size: 1.15rem; line-height: 1.05; color: var(--ink-soft); }
 .arrow { display: inline-block; font-family: var(--font-body); font-size: 1.1rem; color: var(--accent-deep); }
 
+/* Cielo nocturno */
+.night-moon { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.night-moon .moon { position: relative; z-index: 1; flex: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 240, 179, 0.35)); }
+.night-moon > div { position: relative; z-index: 1; }
+.night-phase { margin: 0; font-size: 1.6rem; line-height: 1; color: #f7f2ff; text-transform: uppercase; letter-spacing: 0.04em; }
+.night-sub { margin: 2px 0 0; font-size: 1.2rem; line-height: 1.1; color: var(--lcd-dim); }
+.night-later { margin: 8px 0 0; font-family: var(--font-pixel); font-size: 1.1rem; line-height: 1.1; color: var(--ink-soft); }
+
 /* Desplegable "Más detalles" */
 .more summary { list-style: none; cursor: pointer; }
 .more summary::-webkit-details-marker { display: none; }
