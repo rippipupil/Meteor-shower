@@ -8,7 +8,7 @@ App meteorológica sencilla con estilo pixel retro en violeta: pide tu ubicació
 
 - **Hoy**: temperatura actual y sensación térmica, resumen con consejos (paraguas, protección solar, frío, viento), gráfico de las próximas 24 horas, humedad, viento, lluvia, índice UV, nubosidad, presión, visibilidad, un arco con el recorrido del sol, amanecer, atardecer y luz que se gana o pierde, y comparación con la media de los últimos 10 años.
 - **Avisos oficiales** (app de Android, España): los avisos amarillos, naranjas y rojos de AEMET para tu provincia (vía [MeteoAlarm](https://meteoalarm.org)), con la zona, el horario y el detalle. Solo aparecen cuando hay alguno.
-- **Semana**: previsión de 7 días con máximas, mínimas, probabilidad de lluvia y detalles de cada día.
+- **Semana**: previsión de 7 días con máximas, mínimas, probabilidad de lluvia y detalles de cada día. Debajo, **Tus planes**: apunta un plan con día y lugar (uno guardado o cualquier ciudad) y verás su previsión en cuanto entre en los 16 días, con un consejo (paraguas, calor, tormentas…). Los planes pasados se borran solos.
 - **Mes**: los próximos 30 días en calendario y gráfico. Los 16 primeros son previsión real; como no existe previsión fiable día a día más allá, el resto muestra la media real de los últimos 10 años en esa zona, claramente marcada.
 - **Radar**: la lluvia de las últimas 2 horas sobre el mapa, animada cada 10 minutos, con tu lugar marcado y zoom (radar de [RainViewer](https://www.rainviewer.com/), mapa de © OpenStreetMap y © CARTO).
 - Recuerda la ubicación, cambia entre °C y °F y se actualiza sola al volver a la app.

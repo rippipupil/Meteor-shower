@@ -26,6 +26,8 @@ const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
 const FORECAST_KEY = 'meteor-shower:forecast';
 const PROVINCE_KEY = 'meteor-shower:provinces';
+const PLANS_KEY = 'meteor-shower:plans';
+const MAX_PLANS = 10;
 const CACHE_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // más viejo que esto ya no sirve
 const CLIMATE_YEARS = 10;
 const MONTH_DAYS = 30;
@@ -1174,7 +1176,215 @@ function renderWeek() {
       <h3>Próximos 7 días</h3>
       <p class="muted small">Toca un día para ver más detalles.</p>
       <ul class="week">${rows}</ul>
-    </section>`;
+    </section>
+    <section class="card plans" id="plans"></section>`;
+  renderPlans();
+}
+
+/* ---------- Planificador ---------- */
+
+// Planes con fecha y lugar; la app sigue su previsión (llega hasta 16 días antes).
+const plansUi = { adding: false, other: null, results: [] };
+const planForecasts = new Map(); // lugar|unidad → { at, daily }
+
+const todayIso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+function loadPlans() {
+  const plans = (store.get(PLANS_KEY) || []).filter((p) => p && p.date && p.place && validPlace(p.place));
+  const live = plans.filter((p) => p.date >= todayIso()); // los planes pasados se borran solos
+  if (live.length !== plans.length) store.set(PLANS_KEY, live);
+  return live.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+async function planDaily(place) {
+  if (state.place && samePlace(place, state.place) && state.forecast) return state.forecast.daily;
+  const key = `${cacheKey(place, state.unit)}`;
+  const hit = planForecasts.get(key);
+  if (hit && Date.now() - hit.at < STALE_MS) return hit.daily;
+  const params = new URLSearchParams({
+    latitude: place.lat, longitude: place.lon, timezone: 'auto', forecast_days: 16, temperature_unit: state.unit,
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_gusts_10m_max'
+  });
+  const data = await fetchJSON(`${API.forecast}?${params}`);
+  planForecasts.set(key, { at: Date.now(), daily: data.daily });
+  return data.daily;
+}
+
+function planVerdict(d, i) {
+  const code = d.weather_code[i];
+  const prob = d.precipitation_probability_max[i] ?? 0;
+  if (code >= 95) return ['storm', 'Tormentas: mejor bajo techo'];
+  if (SNOW_CODES.includes(code)) return ['snow', 'Nieve: abrígate bien'];
+  if (prob >= 60 || (d.precipitation_sum[i] ?? 0) >= 2) return ['umbrella', 'Lluvia probable: lleva paraguas'];
+  if (prob >= 30) return ['umbrella', 'Puede caer algo de lluvia'];
+  if ((d.wind_gusts_10m_max[i] ?? 0) >= 60) return ['wind', 'Mucho viento'];
+  if (d.temperature_2m_max[i] >= tUnit(33)) return ['thermo', 'Mucho calor: busca sombra'];
+  if (d.temperature_2m_min[i] <= tUnit(3)) return ['thermo', 'Hará frío'];
+  return ['check', '¡Buen día para tu plan!'];
+}
+
+function planRow(p, daily) {
+  const days = Math.round((Date.parse(p.date) - Date.parse(todayIso())) / 86400000);
+  const when = days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : cap(fmtDate(p.date, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, ''));
+  const i = daily ? daily.time.indexOf(p.date) : -1;
+  let body;
+  if (daily === 'error') body = '<p class="plan-note">No se pudo consultar la previsión.</p>';
+  else if (!daily) body = '<p class="plan-note">Consultando…</p>';
+  else if (i === -1) body = `<p class="plan-note">Faltan ${days} días · la previsión llega 16 días antes</p>`;
+  else {
+    const w = wmo(daily.weather_code[i]);
+    const [icon, text] = planVerdict(daily, i);
+    body = `
+      <div class="plan-wx">
+        ${px(w.icon, 'px-md')}
+        <span class="plan-temp">${temp(daily.temperature_2m_max[i])} <small>${temp(daily.temperature_2m_min[i])}</small></span>
+        <span class="plan-rain">${px('umbrella', 'px-xs')} ${daily.precipitation_probability_max[i] ?? '–'} %</span>
+      </div>
+      <p class="plan-verdict">${px(icon, 'px-xs')} ${text}</p>`;
+  }
+  return `
+    <li class="plan">
+      <div class="plan-head">
+        <span class="plan-date">${when}</span>
+        <span class="plan-name">${escapeHtml(p.name)}</span>
+        <button type="button" class="plan-del" data-plan-del="${p.id}" aria-label="Borrar plan">✕</button>
+      </div>
+      <p class="plan-place">${PIN} ${escapeHtml(p.place.name)}</p>
+      ${body}
+    </li>`;
+}
+
+function planForm() {
+  const options = state.places.map((pl, i) => `<option value="${i}">${escapeHtml(pl.name)}</option>`).join('');
+  const other = plansUi.other;
+  return `
+    <form class="plan-form" data-plan-form>
+      <label>Plan <input name="planName" maxlength="30" placeholder="Excursión, playa, boda…" required></label>
+      <label>Día <input name="planDate" type="date" min="${todayIso()}" required></label>
+      <label>Lugar
+        <select name="planPlace" data-plan-place>${options}<option value="other"${other !== null ? ' selected' : ''}>Otro lugar…</option></select>
+      </label>
+      ${other !== null ? `
+        <div class="plan-search">
+          <input type="search" data-plan-search placeholder="Busca una ciudad" autocomplete="off" value="${escapeHtml(other ? other.name : '')}">
+          <ul class="plan-results">${plansUi.results.map((r, i) => `<li><button type="button" data-plan-pick="${i}"><strong>${escapeHtml(r.name)}</strong> <span>${escapeHtml(r.detail)}</span></button></li>`).join('')}</ul>
+        </div>` : ''}
+      <p class="plan-msg" data-plan-msg role="status"></p>
+      <div class="plan-actions">
+        <button type="submit" class="toggle is-on">Guardar</button>
+        <button type="button" class="link-btn" data-plan-cancel>Cancelar</button>
+      </div>
+    </form>`;
+}
+
+function renderPlans() {
+  const box = document.getElementById('plans');
+  if (!box) return;
+  const plans = loadPlans();
+  const unique = new Map(plans.map((p) => [cacheKey(p.place, state.unit), p.place]));
+  const ready = new Map();
+  for (const [key, place] of unique) {
+    const same = state.place && samePlace(place, state.place) && state.forecast;
+    const hit = same ? { daily: state.forecast.daily } : planForecasts.get(key);
+    ready.set(key, hit ? hit.daily : null);
+  }
+  box.innerHTML = `
+    <h3>Tus planes</h3>
+    ${plans.length ? `<ul class="plan-list">${plans.map((p) => planRow(p, ready.get(cacheKey(p.place, state.unit)))).join('')}</ul>`
+      : '<p class="muted small">Apunta una excursión o un viaje y aquí verás qué tiempo hará ese día.</p>'}
+    ${plansUi.adding ? planForm() : plans.length < MAX_PLANS ? '<button type="button" class="link-btn plan-add" data-plan-add>+ Nuevo plan</button>' : ''}`;
+  // Previsión de los lugares que aún no se tienen
+  for (const [key, place] of unique) {
+    if (ready.get(key)) continue;
+    planDaily(place)
+      .then(() => renderPlansKeepForm())
+      .catch(() => { planForecasts.set(key, { at: Date.now() - STALE_MS + 60000, daily: 'error' }); renderPlansKeepForm(); });
+  }
+}
+
+// Vuelve a pintar la lista sin perder lo que se está escribiendo en el formulario.
+function renderPlansKeepForm() {
+  const form = document.querySelector('[data-plan-form]');
+  const saved = form && { name: form.elements.planName.value, date: form.elements.planDate.value, place: form.elements.planPlace.value, q: (form.querySelector('[data-plan-search]') || {}).value };
+  renderPlans();
+  const again = document.querySelector('[data-plan-form]');
+  if (saved && again) {
+    again.elements.planName.value = saved.name;
+    again.elements.planDate.value = saved.date;
+    if (saved.place !== 'other' && plansUi.other === null) again.elements.planPlace.value = saved.place;
+    const q = again.querySelector('[data-plan-search]');
+    if (q && saved.q != null && !plansUi.other) q.value = saved.q;
+  }
+}
+
+let planSearchSeq = 0;
+function bindPlans() {
+  const panel = el.panels.semana;
+  panel.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('[data-plan-add]')) {
+      plansUi.adding = true;
+      plansUi.other = null;
+      plansUi.results = [];
+      renderPlans();
+      const f = document.querySelector('[data-plan-form]');
+      if (f) f.elements.planName.focus();
+    } else if (t.closest('[data-plan-cancel]')) {
+      plansUi.adding = false;
+      renderPlans();
+    } else if (t.closest('[data-plan-del]')) {
+      const id = t.closest('[data-plan-del]').dataset.planDel;
+      store.set(PLANS_KEY, loadPlans().filter((p) => p.id !== id));
+      renderPlansKeepForm();
+    } else if (t.closest('[data-plan-pick]')) {
+      plansUi.other = plansUi.results[Number(t.closest('[data-plan-pick]').dataset.planPick)];
+      plansUi.results = [];
+      renderPlansKeepForm();
+    }
+  });
+  panel.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-plan-place]')) return;
+    plansUi.other = e.target.value === 'other' ? (plansUi.other || false) : null;
+    plansUi.results = [];
+    renderPlansKeepForm();
+    const q = document.querySelector('[data-plan-search]');
+    if (q) q.focus();
+  });
+  panel.addEventListener('input', (e) => {
+    if (!e.target.matches('[data-plan-search]')) return;
+    const query = e.target.value.trim();
+    const seq = ++planSearchSeq;
+    if (query.length < 2) return;
+    clearTimeout(bindPlans.timer);
+    bindPlans.timer = setTimeout(async () => {
+      try {
+        const results = await searchPlaces(query);
+        if (seq !== planSearchSeq) return;
+        plansUi.results = results;
+        plansUi.other = false;
+        const list = document.querySelector('.plan-results');
+        if (list) list.innerHTML = results.map((r, i) => `<li><button type="button" data-plan-pick="${i}"><strong>${escapeHtml(r.name)}</strong> <span>${escapeHtml(r.detail)}</span></button></li>`).join('') || '<li class="muted small">Sin resultados</li>';
+      } catch { /* sin red */ }
+    }, 350);
+  });
+  panel.addEventListener('submit', (e) => {
+    if (!e.target.matches('[data-plan-form]')) return;
+    e.preventDefault();
+    const f = e.target;
+    const msg = f.querySelector('[data-plan-msg]');
+    const name = f.elements.planName.value.trim();
+    const date = f.elements.planDate.value;
+    const choice = f.elements.planPlace.value;
+    const place = choice === 'other' ? plansUi.other : state.places[Number(choice)];
+    if (!name || !date) { msg.textContent = 'Pon un nombre y un día.'; return; }
+    if (date < todayIso()) { msg.textContent = 'Elige hoy o un día futuro.'; return; }
+    if (!place) { msg.textContent = 'Busca y elige el lugar.'; return; }
+    const plans = loadPlans();
+    plans.push({ id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, date, place: { lat: place.lat, lon: place.lon, name: place.name } });
+    store.set(PLANS_KEY, plans.slice(0, MAX_PLANS));
+    plansUi.adding = false;
+    plansUi.other = null;
+    renderPlans();
+  });
 }
 
 // Une la previsión (16 días) con la media histórica para completar 30 días.
@@ -1801,6 +2011,7 @@ function bindEvents() {
     showWelcome();
   });
   bindPullToRefresh();
+  bindPlans();
   el.retryBtn.addEventListener('click', () => loadWeather());
   el.refreshBtn.addEventListener('click', () => loadWeather({ quiet: true }));
   el.offlineRetry.addEventListener('click', () => loadWeather({ quiet: true }));
