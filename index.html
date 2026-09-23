@@ -81,17 +81,21 @@
         <button role="tab" type="button" data-tab="hoy" aria-selected="true" aria-controls="panel-hoy">Hoy</button>
         <button role="tab" type="button" data-tab="semana" aria-selected="false" aria-controls="panel-semana">Semana</button>
         <button role="tab" type="button" data-tab="mes" aria-selected="false" aria-controls="panel-mes">Mes</button>
+        <button role="tab" type="button" data-tab="radar" aria-selected="false" aria-controls="panel-radar">Radar</button>
       </nav>
 
       <div id="panel-hoy" class="panel" role="tabpanel"></div>
       <div id="panel-semana" class="panel" role="tabpanel" hidden></div>
       <div id="panel-mes" class="panel" role="tabpanel" hidden></div>
+      <div id="panel-radar" class="panel" role="tabpanel" hidden></div>
     </section>
 
     <footer class="footer">
       Datos meteorológicos de <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0)
       · Históricos: reanálisis ERA5 de Copernicus
       · Localidad: <a href="https://www.bigdatacloud.com/" target="_blank" rel="noopener">BigDataCloud</a>
+      · Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
+      · Mapa: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>
     </footer>
   </main>
   <script src="app.js"></script>

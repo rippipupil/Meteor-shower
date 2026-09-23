@@ -9,6 +9,7 @@ App meteorológica sencilla con estilo pixel retro en violeta: pide tu ubicació
 - **Hoy**: temperatura actual y sensación térmica, resumen con consejos (paraguas, protección solar, frío, viento), gráfico de las próximas 24 horas, humedad, viento, lluvia, índice UV, nubosidad, presión, visibilidad, amanecer y atardecer, y comparación con la media de los últimos 10 años.
 - **Semana**: previsión de 7 días con máximas, mínimas, probabilidad de lluvia y detalles de cada día.
 - **Mes**: los próximos 30 días en calendario y gráfico. Los 16 primeros son previsión real; como no existe previsión fiable día a día más allá, el resto muestra la media real de los últimos 10 años en esa zona, claramente marcada.
+- **Radar**: la lluvia de las últimas 2 horas sobre el mapa, animada cada 10 minutos, con tu lugar marcado y zoom (radar de [RainViewer](https://www.rainviewer.com/), mapa de © OpenStreetMap y © CARTO).
 - Recuerda la ubicación, cambia entre °C y °F y se actualiza sola al volver a la app.
 - Estilo pixel retro en violeta oscuro inspirado en el reproductor [starseeked](https://github.com/rippipupil/Starseeked): paneles y botones con marcos pixel art (`frames/`), pantallas LCD, iconos del tiempo en pixel art (`icons/`) y burbujas subiendo por el fondo.
 

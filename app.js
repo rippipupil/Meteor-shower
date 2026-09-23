@@ -11,7 +11,9 @@ const API = {
   archive: 'https://archive-api.open-meteo.com/v1/archive',
   geocode: 'https://geocoding-api.open-meteo.com/v1/search',
   air: 'https://air-quality-api.open-meteo.com/v1/air-quality',
-  reverse: 'https://api.bigdatacloud.net/data/reverse-geocode-client'
+  reverse: 'https://api.bigdatacloud.net/data/reverse-geocode-client',
+  radar: 'https://api.rainviewer.com/public/weather-maps.json',
+  basemap: 'https://basemaps.cartocdn.com/dark_all'
 };
 
 const PLACE_KEY = 'meteor-shower:place';
@@ -74,7 +76,7 @@ const el = {
   welcomeTitle: $('#welcomeTitle'), placeChips: $('#placeChips'), savedPlaces: $('#savedPlaces'), savedList: $('#savedList'),
   pull: $('#pull'), pullText: $('#pullText'),
   hero: $('#hero'), offline: $('#offline'), offlineText: $('#offlineText'), offlineRetry: $('#offlineRetry'), tabs: document.querySelectorAll('[role="tab"]'),
-  panels: { hoy: $('#panel-hoy'), semana: $('#panel-semana'), mes: $('#panel-mes') }
+  panels: { hoy: $('#panel-hoy'), semana: $('#panel-semana'), mes: $('#panel-mes'), radar: $('#panel-radar') }
 };
 
 const store = {
@@ -1170,12 +1172,143 @@ function renderAll() {
   renderToday();
   renderWeek();
   renderMonth();
+  if (state.tab === 'radar') renderRadar();
 }
 
 function selectTab(tab) {
   state.tab = tab;
   el.tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   for (const [name, panel] of Object.entries(el.panels)) panel.hidden = name !== tab;
+  if (tab === 'radar') renderRadar();
+  else stopRadar();
+}
+
+/* ---------- Radar de lluvia ---------- */
+
+// Radar de RainViewer (últimas 2 horas, cada 10 min) sobre un mapa oscuro de CARTO.
+// La API gratuita llega hasta el zoom 7, así que los píxeles se ven grandes: encaja con el estilo.
+const RADAR_ZOOMS = [5, 6, 7];
+const TILE = 256;
+const radar = { zoom: 7, frames: null, loadedAt: 0, frame: 0, timer: null, key: '' };
+
+function tileXY(lat, lon, z) {
+  const n = 2 ** z;
+  const rad = (lat * Math.PI) / 180;
+  return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n];
+}
+
+async function loadRadarFrames() {
+  if (radar.frames && Date.now() - radar.loadedAt < 10 * 60 * 1000) return radar.frames;
+  const data = await fetchJSON(API.radar);
+  radar.frames = (data.radar && data.radar.past || []).map((f) => ({ time: f.time * 1000, url: `${data.host}${f.path}` }));
+  radar.loadedAt = Date.now();
+  return radar.frames;
+}
+
+function stopRadar() {
+  clearInterval(radar.timer);
+  radar.timer = null;
+}
+
+const radarAgo = (t) => {
+  const min = Math.round((Date.now() - t) / 60000);
+  return min < 8 ? 'Ahora' : `Hace ${hm(Math.round(min / 10) * 10)}`;
+};
+
+function showRadarFrame(i) {
+  const panel = el.panels.radar;
+  const layers = panel.querySelectorAll('.radar-layer');
+  if (!layers.length || !radar.frames) return;
+  radar.frame = (i + layers.length) % layers.length;
+  layers.forEach((l, k) => { l.hidden = k !== radar.frame; });
+  panel.querySelectorAll('.radar-ticks i').forEach((t, k) => t.classList.toggle('is-on', k <= radar.frame));
+  const label = panel.querySelector('.radar-time');
+  if (label) label.textContent = radarAgo(radar.frames[radar.frame].time);
+}
+
+function playRadar(on) {
+  stopRadar();
+  const btn = el.panels.radar.querySelector('[data-radar="play"]');
+  if (btn) {
+    btn.textContent = on ? '❚❚' : '▶';
+    btn.setAttribute('aria-label', on ? 'Pausar' : 'Reproducir');
+  }
+  if (!on) return;
+  let hold = 0;
+  radar.timer = setInterval(() => {
+    const last = radar.frame === radar.frames.length - 1;
+    if (last && hold++ < 3) return; // se para un momento en la imagen más reciente
+    hold = 0;
+    showRadarFrame(radar.frame + 1);
+  }, 500);
+}
+
+async function renderRadar(force = false) {
+  const panel = el.panels.radar;
+  const place = state.place;
+  if (!place) return;
+  const key = `${place.lat},${place.lon},${radar.zoom}`;
+  if (!force && radar.key === key && panel.querySelector('.radar-map') && Date.now() - radar.loadedAt < 10 * 60 * 1000) return;
+  radar.key = key;
+  stopRadar();
+  if (!panel.querySelector('.radar-map')) panel.innerHTML = '<div class="lcd lcd-loading"><span class="blink" aria-hidden="true">▮</span> Cargando el radar…</div>';
+  let frames;
+  try {
+    frames = await loadRadarFrames();
+  } catch {
+    if (radar.key !== key) return;
+    radar.key = '';
+    panel.innerHTML = `
+      <section class="card radar-error">
+        <p>No se pudo cargar el radar. Comprueba tu conexión.</p>
+        <button type="button" class="link-btn" data-radar="retry">Reintentar</button>
+      </section>`;
+    return;
+  }
+  if (radar.key !== key || !frames.length) return;
+
+  // Teselas que cubren la vista con el lugar en el centro.
+  const z = radar.zoom;
+  const [fx, fy] = tileXY(place.lat, place.lon, z);
+  const W = Math.min(panel.clientWidth || 360, 560);
+  const H = Math.round(W * 0.9);
+  const px0 = fx * TILE - W / 2;
+  const py0 = fy * TILE - H / 2;
+  const tiles = [];
+  for (let ty = Math.floor(py0 / TILE); ty <= Math.floor((py0 + H) / TILE); ty++) {
+    for (let tx = Math.floor(px0 / TILE); tx <= Math.floor((px0 + W) / TILE); tx++) {
+      if (ty < 0 || ty >= 2 ** z) continue;
+      tiles.push({ x: ((tx % 2 ** z) + 2 ** z) % 2 ** z, y: ty, left: tx * TILE - px0, top: ty * TILE - py0 });
+    }
+  }
+  const img = (src, t) => `<img src="${src}" alt="" style="left:${Math.round(t.left)}px;top:${Math.round(t.top)}px" loading="eager" decoding="async">`;
+  const base = tiles.map((t) => img(`${API.basemap}/${z}/${t.x}/${t.y}.png`, t)).join('');
+  const layers = frames.map((f, k) => `
+    <div class="radar-layer"${k === frames.length - 1 ? '' : ' hidden'}>
+      ${tiles.map((t) => img(`${f.url}/256/${z}/${t.x}/${t.y}/2/1_1.png`, t)).join('')}
+    </div>`).join('');
+  panel.innerHTML = `
+    <section class="card radar">
+      <h3>Radar de lluvia</h3>
+      <div class="radar-map" style="height:${H}px">
+        <div class="radar-base">${base}</div>
+        ${layers}
+        <span class="radar-pin" aria-hidden="true">${PIN}</span>
+        <div class="radar-zoom">
+          <button type="button" class="pixel-btn" data-radar="in" aria-label="Acercar"${z >= RADAR_ZOOMS[RADAR_ZOOMS.length - 1] ? ' disabled' : ''}>+</button>
+          <button type="button" class="pixel-btn" data-radar="out" aria-label="Alejar"${z <= RADAR_ZOOMS[0] ? ' disabled' : ''}>−</button>
+        </div>
+      </div>
+      <div class="radar-bar">
+        <button type="button" class="toggle" data-radar="play" aria-label="Reproducir">▶</button>
+        <span class="radar-ticks" aria-hidden="true">${frames.map(() => '<i></i>').join('')}</span>
+        <span class="radar-time"></span>
+      </div>
+      <p class="radar-note">Lluvia de las últimas 2 horas · más oscuro, más fuerte</p>
+    </section>`;
+  showRadarFrame(frames.length - 1);
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) playRadar(true);
 }
 
 /* ---------- Flujo principal ---------- */
@@ -1525,6 +1658,17 @@ function bindEvents() {
     loadWeather({ quiet: true });
   });
   el.tabs.forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
+  el.panels.radar.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-radar]');
+    if (!b) return;
+    const action = b.dataset.radar;
+    if (action === 'play') playRadar(!radar.timer);
+    else if (action === 'retry') renderRadar(true);
+    else {
+      const i = RADAR_ZOOMS.indexOf(radar.zoom) + (action === 'in' ? 1 : -1);
+      if (RADAR_ZOOMS[i]) { radar.zoom = RADAR_ZOOMS[i]; renderRadar(true); }
+    }
+  });
   el.panels.hoy.addEventListener('click', (e) => {
     const t = e.target.closest('[data-notif]');
     if (t) {
@@ -1547,6 +1691,7 @@ function bindEvents() {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkBackground(); // al volver de los ajustes
+    if (document.visibilityState === 'hidden') stopRadar();
     if (document.visibilityState === 'visible' && state.forecast && !el.weather.hidden && Date.now() - state.loadedAt > STALE_MS) {
       loadWeather({ quiet: true });
     }
