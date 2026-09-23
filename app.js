@@ -353,7 +353,7 @@ function renderHero() {
       <span>${cap(fmtDate(d.time[0], { weekday: 'short', day: 'numeric' })).replace('.', '')} · ${hhmm(c.time)}</span>
     </div>
     <div class="hero-main">
-      ${px(w.icon, 'px-hero')}
+      <img class="px px-hero" src="icons/anim/${w.icon}.svg" alt="" aria-hidden="true">
       <span class="hero-temp">${temp(c.temperature_2m)}</span>
     </div>
     <p class="hero-desc">${w.text}</p>
