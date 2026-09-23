@@ -14,6 +14,8 @@ const API = {
 };
 
 const PLACE_KEY = 'meteor-shower:place';
+const PLACES_KEY = 'meteor-shower:places';
+const MAX_PLACES = 8;
 const WIDGET_HINT_KEY = 'meteor-shower:widget-hint';
 const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
@@ -67,6 +69,7 @@ const el = {
   searchInput: $('#searchInput'), searchResults: $('#searchResults'), welcomeMsg: $('#welcomeMsg'),
   cancelBtn: $('#cancelBtn'), loading: $('#loading'), error: $('#error'), errorMsg: $('#errorMsg'),
   retryBtn: $('#retryBtn'), errorChangeBtn: $('#errorChangeBtn'), weather: $('#weather'),
+  welcomeTitle: $('#welcomeTitle'), placeChips: $('#placeChips'), savedPlaces: $('#savedPlaces'), savedList: $('#savedList'),
   hero: $('#hero'), offline: $('#offline'), offlineText: $('#offlineText'), offlineRetry: $('#offlineRetry'), tabs: document.querySelectorAll('[role="tab"]'),
   panels: { hoy: $('#panel-hoy'), semana: $('#panel-semana'), mes: $('#panel-mes') }
 };
@@ -80,8 +83,18 @@ const store = {
   }
 };
 
+// Lugares guardados. El primero es el principal (el que muestra el widget).
+function loadPlaces() {
+  const saved = store.get(PLACES_KEY);
+  if (Array.isArray(saved)) return saved.filter(validPlace);
+  const old = validPlace(store.get(PLACE_KEY)); // versión anterior: un solo lugar
+  return old ? [old] : [];
+}
+const initialPlaces = loadPlaces();
+
 const state = {
-  place: validPlace(store.get(PLACE_KEY)),
+  places: initialPlaces,
+  place: initialPlaces.find((p) => validPlace(store.get(PLACE_KEY)) && samePlace(p, store.get(PLACE_KEY))) || initialPlaces[0] || null,
   unit: store.get(UNIT_KEY) === 'fahrenheit' ? 'fahrenheit' : 'celsius',
   tab: 'hoy',
   forecast: null,
@@ -92,6 +105,13 @@ const state = {
 
 function validPlace(p) {
   return p && Number.isFinite(p.lat) && Number.isFinite(p.lon) ? p : null;
+}
+
+// Dos lugares son el mismo si son "mi ubicación" o están a menos de ~2 km.
+function samePlace(a, b) {
+  if (!a || !b) return false;
+  if (a.gps && b.gps) return true;
+  return Math.abs(a.lat - b.lat) < 0.02 && Math.abs(a.lon - b.lon) < 0.02;
 }
 
 /* ---------- Utilidades ---------- */
@@ -313,10 +333,16 @@ function showView(name) {
   for (const view of ['welcome', 'loading', 'error', 'weather']) el[view].hidden = view !== name;
   el.actions.hidden = name !== 'weather';
   el.place.hidden = !state.place || name === 'welcome' || name === 'weather';
+  el.placeChips.hidden = state.places.length < 2 || name === 'welcome';
 }
 
 function showWelcome() {
   el.cancelBtn.hidden = !state.forecast;
+  // Con lugares guardados, la pantalla sirve para gestionarlos.
+  const manage = state.places.length > 0;
+  el.welcome.classList.toggle('is-manage', manage);
+  el.welcomeTitle.textContent = manage ? 'Añadir un lugar' : '¿Qué tiempo hace donde estás?';
+  renderSavedPlaces();
   el.searchInput.value = '';
   el.searchResults.innerHTML = '';
   setWelcomeMsg('');
@@ -666,8 +692,9 @@ function widgetHint() {
 // Pasa la ubicación al widget de Android para que se actualice solo.
 function syncWidget() {
   const bridge = widgetBridge();
-  if (!bridge || !state.place) return;
-  const { lat, lon, name } = state.place;
+  const main = state.places[0];
+  if (!bridge || !main) return;
+  const { lat, lon, name } = main;
   Promise.resolve(bridge.setPlace({ lat, lon, name, unit: state.unit })).catch(() => {});
 }
 
@@ -950,9 +977,19 @@ function selectTab(tab) {
 // seguir mostrando algo útil cuando no hay conexión.
 const cacheKey = (place, unit) => `${place.lat.toFixed(3)},${place.lon.toFixed(3)}|${unit}`;
 function readCachedForecast(place, unit) {
-  const c = store.get(FORECAST_KEY);
-  if (!c || c.key !== cacheKey(place, unit) || Date.now() - c.savedAt > CACHE_MAX_AGE) return null;
+  const all = store.get(FORECAST_KEY);
+  const c = all && all.entries && all.entries[cacheKey(place, unit)];
+  if (!c || Date.now() - c.savedAt > CACHE_MAX_AGE) return null;
   return c;
+}
+function writeCachedForecast(place, unit, savedAt, data) {
+  const all = store.get(FORECAST_KEY);
+  const entries = (all && all.entries) || {};
+  entries[cacheKey(place, unit)] = { savedAt, data };
+  // Solo se conservan los lugares guardados
+  const keep = new Set(state.places.flatMap((p) => [cacheKey(p, 'celsius'), cacheKey(p, 'fahrenheit')]));
+  for (const k of Object.keys(entries)) if (!keep.has(k)) delete entries[k];
+  store.set(FORECAST_KEY, { entries });
 }
 
 function renderOffline() {
@@ -988,7 +1025,7 @@ async function loadWeather({ quiet = false } = {}) {
     state.climate = null;
     state.loadedAt = Date.now();
     state.offlineSince = null;
-    store.set(FORECAST_KEY, { key: cacheKey(place, unit), savedAt: state.loadedAt, data });
+    writeCachedForecast(place, unit, state.loadedAt, data);
     renderAll();
     renderOffline();
     showView('weather');
@@ -1025,12 +1062,87 @@ async function loadWeather({ quiet = false } = {}) {
   }
 }
 
+function savePlaces() {
+  store.set(PLACES_KEY, state.places);
+  if (state.place) store.set(PLACE_KEY, state.place);
+}
+
+// Añade (o actualiza) un lugar y lo muestra.
 function selectPlace(place) {
+  let idx = state.places.findIndex((p) => samePlace(p, place));
+  if (idx === -1) {
+    if (state.places.length >= MAX_PLACES) state.places.pop();
+    state.places.push(place);
+    idx = state.places.length - 1;
+  } else {
+    state.places[idx] = place;
+  }
+  switchPlace(idx);
+}
+
+function switchPlace(idx) {
+  const place = state.places[idx];
+  if (!place) return;
   state.place = place;
   state.forecast = null;
-  store.set(PLACE_KEY, place);
+  state.climate = null;
+  state.offlineSince = null;
+  savePlaces();
+  renderPlaceChips();
   renderHeaderFromPlace();
   loadWeather();
+}
+
+function removePlace(idx) {
+  const [gone] = state.places.splice(idx, 1);
+  savePlaces();
+  if (idx === 0) syncWidget(); // ha cambiado el lugar principal
+  renderSavedPlaces();
+  renderPlaceChips();
+  if (!state.places.length) {
+    // No queda ninguno: vuelta a empezar
+    state.place = null;
+    state.forecast = null;
+    store.set(PLACE_KEY, null);
+    el.cancelBtn.hidden = true;
+  } else if (gone === state.place) {
+    switchPlace(0);
+  }
+}
+
+function makePrimary(idx) {
+  const [p] = state.places.splice(idx, 1);
+  state.places.unshift(p);
+  savePlaces();
+  syncWidget();
+  renderSavedPlaces();
+  renderPlaceChips();
+}
+
+// Fila de pestañas con los lugares guardados (solo si hay más de uno).
+function renderPlaceChips() {
+  const box = el.placeChips;
+  box.hidden = state.places.length < 2 || !el.welcome.hidden;
+  box.innerHTML = state.places.map((p, i) => `
+    <button type="button" class="chip${p === state.place ? ' is-active' : ''}" data-place="${i}"${p === state.place ? ' aria-current="true"' : ''}>
+      ${i === 0 ? '<span class="chip-star" aria-label="Principal">★</span>' : ''}${escapeHtml(p.name)}
+    </button>`).join('');
+  const active = box.querySelector('.is-active');
+  if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+
+// Lista "Tus lugares" en la pantalla de cambiar ubicación.
+function renderSavedPlaces() {
+  el.savedPlaces.hidden = !state.places.length;
+  el.savedList.innerHTML = state.places.map((p, i) => `
+    <li>
+      <button type="button" class="saved-name" data-go="${i}">
+        <strong>${escapeHtml(p.name)}</strong>
+        <span>${i === 0 ? '★ Principal · en el widget' : escapeHtml(p.detail || '')}</span>
+      </button>
+      ${i === 0 ? '' : `<button type="button" class="saved-btn" data-primary="${i}" aria-label="Hacer principal ${escapeHtml(p.name)}">★</button>`}
+      <button type="button" class="saved-btn" data-remove="${i}" aria-label="Borrar ${escapeHtml(p.name)}">✕</button>
+    </li>`).join('');
 }
 
 function renderHeaderFromPlace() {
@@ -1055,14 +1167,15 @@ function locate() {
     setWelcomeMsg('');
     const lat = Number(pos.coords.latitude.toFixed(4));
     const lon = Number(pos.coords.longitude.toFixed(4));
-    const place = { lat, lon, name: 'Mi ubicación', detail: `${lat.toFixed(2)}, ${lon.toFixed(2)}` };
+    const place = { lat, lon, gps: true, name: 'Mi ubicación', detail: `${lat.toFixed(2)}, ${lon.toFixed(2)}` };
     selectPlace(place);
     try {
       const named = await reverseName(lat, lon);
       if (named && state.place === place) {
         Object.assign(place, named);
-        store.set(PLACE_KEY, place);
+        savePlaces();
         renderHeaderFromPlace();
+        renderPlaceChips();
         syncWidget();
       }
     } catch { /* se queda con las coordenadas */ }
@@ -1122,6 +1235,31 @@ function bindEvents() {
     showView('weather');
   });
   el.changeBtn.addEventListener('click', showWelcome);
+  el.placeChips.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-place]');
+    if (b && state.places[b.dataset.place] !== state.place) switchPlace(Number(b.dataset.place));
+  });
+  el.savedList.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]');
+    const primary = e.target.closest('[data-primary]');
+    const remove = e.target.closest('[data-remove]');
+    if (remove) removePlace(Number(remove.dataset.remove));
+    else if (primary) makePrimary(Number(primary.dataset.primary));
+    else if (go) switchPlace(Number(go.dataset.go));
+  });
+  // Deslizar sobre la pantalla principal cambia de lugar.
+  let touch = null;
+  el.hero.addEventListener('touchstart', (e) => { touch = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
+  el.hero.addEventListener('touchend', (e) => {
+    if (!touch || state.places.length < 2) return;
+    const dx = e.changedTouches[0].clientX - touch.x;
+    const dy = e.changedTouches[0].clientY - touch.y;
+    touch = null;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > 40) return;
+    const i = state.places.indexOf(state.place);
+    const n = state.places.length;
+    switchPlace((i + (dx < 0 ? 1 : -1) + n) % n);
+  });
   el.errorChangeBtn.addEventListener('click', () => {
     state.forecast = null;
     showWelcome();
@@ -1153,6 +1291,8 @@ function bindEvents() {
 setSky('bubbles');
 bindEvents();
 if (state.place) {
+  if (!store.get(PLACES_KEY)) savePlaces(); // migra el lugar único de versiones anteriores
+  renderPlaceChips();
   renderHeaderFromPlace();
   loadWeather();
 } else {

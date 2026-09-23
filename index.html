@@ -32,6 +32,8 @@
       </div>
     </header>
 
+    <nav class="place-chips" id="placeChips" aria-label="Tus lugares" hidden></nav>
+
     <div class="place" id="place" hidden>
       <h1 id="placeName"></h1>
       <p id="placeDetail"></p>
@@ -39,7 +41,7 @@
 
     <section id="welcome" class="card welcome" hidden>
       <img class="welcome-icon" src="icon.svg" alt="" width="96" height="96">
-      <h2>¿Qué tiempo hace donde estás?</h2>
+      <h2 id="welcomeTitle">¿Qué tiempo hace donde estás?</h2>
       <p>Comparte tu ubicación para ver el tiempo de hoy, de la semana y del mes, con datos meteorológicos reales.</p>
       <button id="locateBtn" class="primary-btn" type="button">Usar mi ubicación</button>
       <div class="divider"><span>o busca una ciudad</span></div>
@@ -48,6 +50,10 @@
       </form>
       <ul id="searchResults" class="results"></ul>
       <p id="welcomeMsg" class="msg" role="status"></p>
+      <div class="saved" id="savedPlaces" hidden>
+        <div class="divider"><span>tus lugares</span></div>
+        <ul class="saved-list" id="savedList"></ul>
+      </div>
       <button id="cancelBtn" class="link-btn" type="button" hidden>← Volver</button>
     </section>
 

@@ -238,6 +238,36 @@ body[data-sky="rain"]::before, body[data-sky="storm"]::before { background: radi
 .place h1 { margin: 0; font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; line-height: 1.1; color: var(--lilac); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .place p { margin: 2px 0 0; font-family: var(--font-pixel); font-size: 1.2rem; line-height: 1.1; color: var(--lilac-soft); }
 
+/* Pestañas de lugares guardados */
+.place-chips { display: flex; gap: 8px; margin: 2px -14px 10px; padding: 0 14px 6px; overflow-x: auto; scrollbar-width: none; }
+.place-chips[hidden] { display: none; }
+.place-chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  padding: 2px 12px;
+  border: 2px solid rgba(202, 174, 255, 0.35);
+  background: rgba(20, 11, 38, 0.6);
+  color: var(--lilac-soft);
+  font-family: var(--font-pixel);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.chip.is-active { border-color: var(--ink); background: var(--accent); color: #fff; box-shadow: 0 3px 0 rgba(6, 2, 16, 0.6); }
+.chip-star { margin-right: 4px; color: #ffd84a; }
+
+/* Lista "Tus lugares" */
+.welcome.is-manage .welcome-icon, .welcome.is-manage > p { display: none; }
+.welcome.is-manage h2 { margin-top: 4px; }
+
+.saved-list { list-style: none; margin: 0; padding: 0; text-align: left; }
+.saved-list li { display: flex; align-items: center; gap: 6px; border-top: 2px dashed rgba(35, 22, 64, 0.15); }
+.saved-name { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 8px 4px; border: 0; background: none; text-align: left; }
+.saved-name strong { font-family: var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-name span { font-family: var(--font-pixel); font-size: 1.1rem; line-height: 1.1; color: var(--ink-soft); }
+.saved-btn { flex: none; width: 36px; height: 36px; border: 2px solid var(--ink); background: #e2d3ff; color: var(--accent-deep); font-size: 1rem; box-shadow: 0 3px 0 rgba(6, 2, 16, 0.35); }
+.saved-btn:active { transform: translateY(2px); box-shadow: none; }
+
 /* ---------- Paneles ---------- */
 .card { margin-bottom: 14px; padding: 8px 10px; color: var(--ink); }
 .card h3 {
