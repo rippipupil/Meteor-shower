@@ -436,6 +436,19 @@ body[data-sky="rain"]::before, body[data-sky="storm"]::before { background: radi
 .pollen .lvl-alto { background: #f2994a; color: var(--ink); }
 .pollen-none { margin: 10px 0 0; font-family: var(--font-pixel); font-size: 1.15rem; color: var(--ink-soft); }
 
+/* Avisos */
+.notif-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; font-family: var(--font-pixel); font-size: 1.3rem; line-height: 1.1; }
+.notif-row > span { display: flex; align-items: center; gap: 10px; }
+.notif-row + .notif-row, .notif-time + .notif-row { border-top: 2px dashed rgba(35, 22, 64, 0.15); }
+.toggle { flex: none; min-width: 58px; padding: 2px 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink-soft); font-family: var(--font-pixel); font-size: 1.25rem; box-shadow: 0 3px 0 rgba(6, 2, 16, 0.4); }
+.toggle.is-on { background: var(--accent); color: #fff; }
+.toggle:active { transform: translateY(2px); box-shadow: none; }
+.notif-time { display: flex; align-items: center; gap: 8px; margin: 0 0 6px 32px; font-family: var(--font-pixel); font-size: 1.2rem; color: var(--ink-soft); }
+.notif-time[hidden] { display: none; }
+.notif-time input { padding: 2px 6px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font-family: var(--font-pixel); font-size: 1.25rem; }
+.notif-msg { margin: 6px 0 0; font-family: var(--font-pixel); font-size: 1.05rem; line-height: 1.1; color: var(--ink-soft); }
+.notif-msg.is-error { color: #b0304f; }
+
 /* Cielo nocturno */
 .night-moon { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .night-moon .moon { position: relative; z-index: 1; flex: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 240, 179, 0.35)); }

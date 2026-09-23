@@ -41,6 +41,15 @@ Con la app instalada, mantén pulsado un hueco de la pantalla de inicio, toca **
 
 Usa la ubicación que elijas en la app y se actualiza solo cada 30 minutos, sin tener que abrirla. Al tocarlo se abre la app. Su código nativo está en `android-src/` y se añade al proyecto Android durante el build.
 
+### Avisos
+
+En la tarjeta **Avisos** de la pestaña Hoy (solo en la app de Android) se pueden activar:
+
+- **Resumen de la mañana**: una notificación diaria, a la hora que elijas, con el tiempo del día y si va a llover.
+- **Si va a llover en 1 hora**: la app comprueba la previsión cada ~30 minutos y avisa si la próxima franja horaria trae lluvia (probabilidad ≥ 60 % o ≥ 0,5 mm). Como mucho un aviso cada 3 horas y nunca entre las 23:00 y las 07:00.
+
+Ambos usan el lugar principal (★), el mismo que el widget. Android puede retrasarlos unos minutos para ahorrar batería. El código está en `android-src/java/NotifyReceiver.java`.
+
 ## Abrirla en el navegador
 
 Se publica automáticamente en GitHub Pages con cada cambio en `main` (en *Settings → Pages*, elige **GitHub Actions** como origen la primera vez) y queda en `https://rippipupil.github.io/meteor-shower/`. Desde el móvil se puede instalar como app con «Añadir a pantalla de inicio».

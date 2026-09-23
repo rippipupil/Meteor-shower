@@ -29,8 +29,8 @@ import java.util.Locale;
  */
 public class WeatherWidgetProvider extends AppWidgetProvider {
 
-    private static final String PREFS = "meteor_shower_widget";
-    private static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+    static final String PREFS = "meteor_shower_widget";
+    static final String FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
         + "?latitude=%s&longitude=%s&timezone=auto&forecast_days=2&temperature_unit=%s"
         + "&current=temperature_2m,weather_code,is_day"
         + "&hourly=precipitation_probability,precipitation,weather_code"
@@ -96,7 +96,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private static String download(String address) throws Exception {
+    static String download(String address) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(10000);
         connection.setReadTimeout(10000);
@@ -115,7 +115,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     /** Reduce la respuesta de Open-Meteo a lo que enseña el widget. */
-    private static JSONObject summarize(JSONObject data, String place) throws Exception {
+    static JSONObject summarize(JSONObject data, String place) throws Exception {
         JSONObject current = data.getJSONObject("current");
         JSONObject hourly = data.getJSONObject("hourly");
         JSONObject daily = data.getJSONObject("daily");
@@ -171,7 +171,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         return new String[] { "Sin lluvia hoy", "0" };
     }
 
-    private static boolean isSnow(int code) {
+    static boolean isSnow(int code) {
         return (code >= 71 && code <= 77) || code == 85 || code == 86;
     }
 
@@ -201,7 +201,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private static String describe(int code) {
+    static String describe(int code) {
         switch (code) {
             case 0: return "Despejado";
             case 1: return "Mayormente despejado";

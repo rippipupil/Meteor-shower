@@ -32,6 +32,8 @@ manifest = manifest_path.read_text(encoding='utf-8')
 
 PERMISSIONS = """    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
 """
 RECEIVER = """        <receiver
@@ -44,6 +46,14 @@ RECEIVER = """        <receiver
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".NotifyReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
         </receiver>
 """
 if 'ACCESS_COARSE_LOCATION' not in manifest:

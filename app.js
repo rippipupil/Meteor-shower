@@ -18,6 +18,7 @@ const PLACE_KEY = 'meteor-shower:place';
 const PLACES_KEY = 'meteor-shower:places';
 const MAX_PLACES = 8;
 const WIDGET_HINT_KEY = 'meteor-shower:widget-hint';
+const NOTIF_KEY = 'meteor-shower:notifications';
 const UNIT_KEY = 'meteor-shower:unit';
 const CLIMATE_KEY = 'meteor-shower:climate';
 const FORECAST_KEY = 'meteor-shower:forecast';
@@ -553,6 +554,7 @@ function renderToday() {
       <summary><h3>Más detalles</h3></summary>
       <dl class="facts">${facts}</dl>
     </details>
+    ${renderNotifCard()}
     ${widgetHint()}`;
   const more = el.panels.hoy.querySelector('.more');
   more.addEventListener('toggle', () => { state.moreOpen = more.open; });
@@ -743,6 +745,45 @@ function renderAir() {
       </div>
       ${pollenHtml}
     </section>`;
+}
+
+/* ---------- Avisos (solo en la app de Android) ---------- */
+
+const notifSupported = () => Boolean(widgetBridge() && typeof widgetBridge().setNotifications === 'function');
+const notifSettings = () => ({ morning: false, morningTime: '08:00', rain: false, ...(store.get(NOTIF_KEY) || {}) });
+
+function renderNotifCard() {
+  if (!notifSupported()) return '';
+  const n = notifSettings();
+  const toggle = (key, on) => `<button type="button" class="toggle${on ? ' is-on' : ''}" data-notif="${key}" aria-pressed="${on}">${on ? 'SÍ' : 'NO'}</button>`;
+  return `
+    <section class="card notif">
+      <h3>Avisos</h3>
+      <div class="notif-row">
+        <span>${px('clear-day', 'px-sm')} Resumen de la mañana</span>
+        ${toggle('morning', n.morning)}
+      </div>
+      <label class="notif-time"${n.morning ? '' : ' hidden'}>a las <input type="time" value="${escapeHtml(n.morningTime)}" data-notif-time></label>
+      <div class="notif-row">
+        <span>${px('umbrella', 'px-sm')} Si va a llover en 1 hora</span>
+        ${toggle('rain', n.rain)}
+      </div>
+      <p class="notif-msg" id="notifMsg">Para ${escapeHtml((state.places[0] || {}).name || 'tu lugar principal')}. Android puede retrasarlos unos minutos.</p>
+    </section>`;
+}
+
+// Envía los ajustes a Android. Con ask = true pide permiso de notificaciones.
+async function applyNotifications(ask) {
+  if (!notifSupported()) return;
+  const n = notifSettings();
+  try {
+    const res = await widgetBridge().setNotifications({ ...n, ask });
+    const msg = document.getElementById('notifMsg');
+    if (msg && (n.morning || n.rain) && res && res.granted === false) {
+      msg.textContent = 'Permiso de notificaciones denegado. Actívalo en Ajustes › Apps › Meteor Shower.';
+      msg.classList.add('is-error');
+    }
+  } catch { /* versión de la app sin avisos */ }
 }
 
 function widgetHint() {
@@ -1319,6 +1360,11 @@ function bindEvents() {
     else if (primary) makePrimary(Number(primary.dataset.primary));
     else if (go) switchPlace(Number(go.dataset.go));
   });
+  el.panels.hoy.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-notif-time]') || !e.target.value) return;
+    store.set(NOTIF_KEY, { ...notifSettings(), morningTime: e.target.value });
+    applyNotifications(false);
+  });
   // Deslizar sobre la pantalla principal cambia de lugar.
   let touch = null;
   el.hero.addEventListener('touchstart', (e) => { touch = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
@@ -1348,6 +1394,15 @@ function bindEvents() {
   });
   el.tabs.forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
   el.panels.hoy.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-notif]');
+    if (t) {
+      const n = notifSettings();
+      n[t.dataset.notif] = !n[t.dataset.notif];
+      store.set(NOTIF_KEY, n);
+      renderToday();
+      applyNotifications(true);
+      return;
+    }
     if (!e.target.closest('[data-dismiss-widget-hint]')) return;
     store.set(WIDGET_HINT_KEY, true);
     const card = e.target.closest('.widget-hint');
@@ -1362,6 +1417,7 @@ function bindEvents() {
 
 setSky('bubbles');
 bindEvents();
+applyNotifications(false); // vuelve a programar los avisos guardados
 if (state.place) {
   if (!store.get(PLACES_KEY)) savePlaces(); // migra el lugar único de versiones anteriores
   renderPlaceChips();
