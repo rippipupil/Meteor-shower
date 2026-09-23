@@ -231,6 +231,10 @@ strong { font-weight: 700; }
 /* ---------- Tiempo actual ---------- */
 .hero { margin-bottom: 14px; padding: 8px 12px 12px; text-align: center; }
 .lcd-top { display: flex; justify-content: space-between; gap: 10px; font-size: 1.15rem; color: var(--lcd-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.lcd-place { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--lcd-glow); }
+.lcd-place > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lcd-place .pin { flex: none; }
+.lcd-top > span:last-child { flex: none; }
 .hero-main { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 4px 0 0; }
 .hero-main .px { filter: drop-shadow(0 0 8px rgba(210, 189, 255, 0.3)); }
 .hero-temp { font-size: 6.2rem; line-height: 0.85; letter-spacing: -0.02em; color: #f7f2ff; }
@@ -291,6 +295,18 @@ strong { font-weight: 700; }
 .tile-sub { font-family: var(--font-pixel); font-size: 1.15rem; line-height: 1.05; color: var(--ink-soft); }
 .arrow { display: inline-block; font-family: var(--font-body); font-size: 1.1rem; color: var(--accent-deep); }
 
+/* Desplegable "Más detalles" */
+.more summary { list-style: none; cursor: pointer; }
+.more summary::-webkit-details-marker { display: none; }
+.more summary h3 { margin: 0; }
+.more summary h3::after { content: "+"; margin-left: auto; font-size: 1.6rem; color: var(--accent); }
+.more[open] summary h3::after { content: "−"; }
+.more[open] summary { margin-bottom: 8px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; font-family: var(--font-pixel); line-height: 1.05; }
+.fact { padding-top: 6px; border-top: 2px dashed rgba(35, 22, 64, 0.15); }
+.fact dt { display: flex; align-items: center; gap: 6px; font-size: 1.05rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.fact dd { margin: 2px 0 0; font-size: 1.6rem; color: var(--ink); }
+.fact dd small { display: block; font-size: 1.05rem; color: var(--ink-soft); }
 .widget-hint p { font-size: 0.92rem; }
 .widget-hint .link-btn { margin-top: 2px; padding-left: 0; }
 

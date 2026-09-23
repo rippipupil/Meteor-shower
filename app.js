@@ -141,6 +141,9 @@ function wmo(code, isDay = true) {
 }
 
 // Icono pixel art. Los tamaños se fijan por CSS (px-hero, px-md, px-sm…).
+// Chincheta pixel art para el nombre del lugar en la pantalla LCD.
+const PIN = '<svg class="pin" viewBox="0 0 8 8" width="12" height="12" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor">'
+  + '<path d="M2 0h4v1h1v1h1v2h-1v1h-1v1h-1v2h-2v-2h-1v-1h-1v-1h-1v-2h1v-1h1zM3 2v2h2v-2z"/></svg>';
 const px = (key, cls = '') => `<img class="px ${cls}" src="icons/${key}.svg" alt="" aria-hidden="true">`;
 const li = (icon, html) => `<li>${px(icon, 'px-sm')}<span>${html}</span></li>`;
 
@@ -307,7 +310,7 @@ async function searchPlaces(query) {
 function showView(name) {
   for (const view of ['welcome', 'loading', 'error', 'weather']) el[view].hidden = view !== name;
   el.actions.hidden = name !== 'weather';
-  el.place.hidden = !state.place || name === 'welcome';
+  el.place.hidden = !state.place || name === 'welcome' || name === 'weather';
 }
 
 function showWelcome() {
@@ -343,8 +346,8 @@ function renderHero() {
   el.hero.innerHTML = `
     <div class="lcd-bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="lcd-top">
-      <span>${cap(fmtDate(d.time[0], { weekday: 'long', day: 'numeric', month: 'short' })).replace('.', '')}</span>
-      <span>${hhmm(c.time)} h</span>
+      <span class="lcd-place">${PIN}<span>${escapeHtml(state.place.name)}</span></span>
+      <span>${cap(fmtDate(d.time[0], { weekday: 'short', day: 'numeric' })).replace('.', '')} · ${hhmm(c.time)}</span>
     </div>
     <div class="hero-main">
       ${px(w.icon, 'px-hero')}
@@ -408,6 +411,12 @@ function buildAdvice(f) {
   const gusts = d.wind_gusts_10m_max[0];
   if (gusts >= 50) tips.push(['wind', `Rachas de ${Math.round(gusts)} km/h`]);
   if (!tips.length) tips.push(['check', 'Día tranquilo']);
+  if (state.climate && state.climate !== 'error') {
+    const diff = max - state.climate.days[0].max;
+    const normalMax = temp(state.climate.days[0].max);
+    if (Math.abs(diff) < tDelta(1.5)) tips.push(['gauge', `Normal para la época (${normalMax})`]);
+    else tips.push(['gauge', `${Math.round(Math.abs(diff))}° ${diff > 0 ? 'más' : 'menos'} que lo normal (${normalMax})`]);
+  }
   return tips;
 }
 
@@ -477,37 +486,28 @@ function renderToday() {
   const uvNow = f.hourly.uv_index[hi];
   const vis = f.hourly.visibility[hi];
 
+  // Cuatro fichas a la vista; el resto, en un desplegable.
   const tiles = [
-    detailTile('thermo', 'Sensación', temp(c.apparent_temperature), `Temperatura real ${temp(c.temperature_2m)}`),
-    detailTile('drop', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)),
+    detailTile('thermo', 'Sensación', temp(c.apparent_temperature), `Real ${temp(c.temperature_2m)}`),
     detailTile('wind', 'Viento', `${num(c.wind_speed_10m)} km/h ${windArrow(c.wind_direction_10m)}`,
-      `Del ${compass(c.wind_direction_10m)} · rachas ${num(c.wind_gusts_10m)} km/h`),
+      `Del ${compass(c.wind_direction_10m)} · rachas ${num(c.wind_gusts_10m)}`),
     detailTile('umbrella', 'Lluvia hoy', `${num(d.precipitation_sum[0], 1)} mm`,
-      `Probabilidad ${d.precipitation_probability_max[0] ?? '–'} %${d.precipitation_hours[0] ? ` · ${num(d.precipitation_hours[0])} h` : ''}`),
-    detailTile('clear-day', 'Índice UV', num(d.uv_index_max[0]), `${uvLevel(d.uv_index_max[0])} · ahora ${num(uvNow)}`),
-    detailTile('cloudy', 'Nubosidad', `${num(c.cloud_cover)} %`, wmo(c.weather_code, c.is_day).text),
-    detailTile('gauge', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl)),
-    detailTile('eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`,
-      vis == null ? '' : vis < 1000 ? 'Muy reducida' : vis < 5000 ? 'Reducida' : 'Buena'),
-    detailTile('sunrise', 'Amanecer', hhmm(d.sunrise[0]), `${duration(d.daylight_duration[0])} de luz`),
-    detailTile('sunset', 'Atardecer', hhmm(d.sunset[0]), 'Hora local')
+      `${d.precipitation_probability_max[0] ?? '–'} % de probabilidad`),
+    detailTile('clear-day', 'Índice UV', num(d.uv_index_max[0]), `${uvLevel(d.uv_index_max[0])} · ahora ${num(uvNow)}`)
   ].join('');
 
-  let normal = '';
-  if (state.climate && state.climate !== 'error') {
-    const n = state.climate.days[0];
-    const diff = d.temperature_2m_max[0] - n.max;
-    const verdict = Math.abs(diff) < tDelta(1.5)
-      ? 'Temperaturas normales para la época.'
-      : `Hoy hace ${Math.round(Math.abs(diff))}° ${diff > 0 ? 'más calor' : 'más frío'} de lo habitual.`;
-    normal = `
-      <section class="card">
-        <h3>Comparado con otros años</h3>
-        <p class="lead">${verdict}</p>
-        <p class="muted">Media de los últimos ${state.climate.years} años para esta fecha: máx ${temp(n.max)}, mín ${temp(n.min)}.
-        Récords en ese periodo: ${temp(n.recordMax)} de máxima y ${temp(n.recordMin)} de mínima.</p>
-      </section>`;
-  }
+  const facts = [
+    ['drop', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)],
+    ['cloudy', 'Nubosidad', `${num(c.cloud_cover)} %`, ''],
+    ['gauge', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl).split(' · ')[0]],
+    ['eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`, ''],
+    ['sunrise', 'Amanecer', hhmm(d.sunrise[0]), ''],
+    ['sunset', 'Atardecer', hhmm(d.sunset[0]), `${duration(d.daylight_duration[0])} de luz`]
+  ].map(([icon, label, value, note]) => `
+      <div class="fact">
+        <dt>${px(icon, 'px-xs')} ${label}</dt>
+        <dd>${value}${note ? ` <small>${note}</small>` : ''}</dd>
+      </div>`).join('');
 
   el.panels.hoy.innerHTML = `
     <section class="card advice">
@@ -516,8 +516,13 @@ function renderToday() {
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
-    ${normal}
+    <details class="card more"${state.moreOpen ? ' open' : ''}>
+      <summary><h3>Más detalles</h3></summary>
+      <dl class="facts">${facts}</dl>
+    </details>
     ${widgetHint()}`;
+  const more = el.panels.hoy.querySelector('.more');
+  more.addEventListener('toggle', () => { state.moreOpen = more.open; });
 }
 
 function widgetHint() {
@@ -822,6 +827,7 @@ function selectPlace(place) {
 function renderHeaderFromPlace() {
   el.placeName.textContent = state.place.name;
   el.placeDetail.textContent = state.place.detail || '';
+  if (state.forecast) renderHero();
 }
 
 function locate() {
