@@ -100,6 +100,7 @@ public class NotifyReceiver extends BroadcastReceiver {
         if (!ACTION_MORNING.equals(action) && !ACTION_RAIN.equals(action)) {
             // Reinicio del móvil o actualización de la app: las alarmas se pierden.
             reschedule(app);
+            WeatherWidgetProvider.requestUpdate(app);
             return;
         }
         final PendingResult result = goAsync();

@@ -34,6 +34,7 @@ PERMISSIONS = """    <uses-permission android:name="android.permission.ACCESS_CO
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
 """
 RECEIVER = """        <receiver

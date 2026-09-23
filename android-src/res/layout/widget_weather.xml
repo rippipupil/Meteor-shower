@@ -80,15 +80,33 @@
                 android:textColor="#F3ECFF"
                 android:textSize="21sp" />
 
-            <TextView
-                android:id="@+id/w_updated"
+            <LinearLayout
+                android:id="@+id/w_refresh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/vt323"
-                android:singleLine="true"
-                android:text=""
-                android:textColor="#A790D6"
-                android:textSize="15sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp">
+
+                <ImageView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginEnd="4dp"
+                    android:contentDescription="Actualizar"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/wx_refresh" />
+
+                <TextView
+                    android:id="@+id/w_updated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/vt323"
+                    android:singleLine="true"
+                    android:text=""
+                    android:textColor="#A790D6"
+                    android:textSize="15sp" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

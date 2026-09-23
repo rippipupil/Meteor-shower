@@ -558,6 +558,7 @@ function renderToday() {
     ${widgetHint()}`;
   const more = el.panels.hoy.querySelector('.more');
   more.addEventListener('toggle', () => { state.moreOpen = more.open; });
+  checkBackground();
 }
 
 /* ---------- Cielo nocturno ---------- */
@@ -769,7 +770,22 @@ function renderNotifCard() {
         ${toggle('rain', n.rain)}
       </div>
       <p class="notif-msg" id="notifMsg">Para ${escapeHtml((state.places[0] || {}).name || 'tu lugar principal')}. Android puede retrasarlos unos minutos.</p>
+      <div class="bg-row" id="bgRow" hidden>
+        <p>Android está ahorrando batería con la app, así que el widget y los avisos pueden no actualizarse.</p>
+        <button type="button" class="toggle" data-allow-bg>Permitir</button>
+      </div>
     </section>`;
+}
+
+// Muestra «Permitir» si Android limita la app en segundo plano (ahorro de batería).
+async function checkBackground() {
+  const bridge = widgetBridge();
+  const row = document.getElementById('bgRow');
+  if (!row || !bridge || typeof bridge.batteryStatus !== 'function') return;
+  try {
+    const res = await bridge.batteryStatus();
+    row.hidden = Boolean(res && res.unrestricted);
+  } catch { row.hidden = true; }
 }
 
 // Envía los ajustes a Android. Con ask = true pide permiso de notificaciones.
@@ -1425,6 +1441,11 @@ function bindEvents() {
       store.set(NOTIF_KEY, n);
       renderToday();
       applyNotifications(true);
+      checkBackground();
+      return;
+    }
+    if (e.target.closest('[data-allow-bg]')) {
+      widgetBridge().allowBackground().catch(() => {});
       return;
     }
     if (!e.target.closest('[data-dismiss-widget-hint]')) return;
@@ -1433,6 +1454,7 @@ function bindEvents() {
     if (card) card.remove();
   });
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkBackground(); // al volver de los ajustes
     if (document.visibilityState === 'visible' && state.forecast && !el.weather.hidden && Date.now() - state.loadedAt > STALE_MS) {
       loadWeather({ quiet: true });
     }

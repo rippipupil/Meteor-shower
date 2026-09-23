@@ -473,6 +473,9 @@ body[data-sky="storm"] { background: #16132a; }
 .notif-time input { padding: 2px 6px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font-family: var(--font-pixel); font-size: 1.25rem; }
 .notif-msg { margin: 6px 0 0; font-family: var(--font-pixel); font-size: 1.05rem; line-height: 1.1; color: var(--ink-soft); }
 .notif-msg.is-error { color: #b0304f; }
+.bg-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 2px dashed rgba(35, 22, 64, 0.15); }
+.bg-row[hidden] { display: none; }
+.bg-row p { margin: 0; font-family: var(--font-pixel); font-size: 1.05rem; line-height: 1.1; color: #b0304f; }
 
 /* Cielo nocturno */
 .night-moon { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }

@@ -39,7 +39,9 @@ Con la app instalada, mantén pulsado un hueco de la pantalla de inicio, toca **
 - un icono en pixel art del cielo (soleado, nublado, lluvia, nieve, tormenta, niebla, de día o de noche),
 - si va a llover hoy y a qué hora (por ejemplo «Lluvia hoy 17:00 · 60 %» o «Sin lluvia hoy»).
 
-Usa la ubicación que elijas en la app y se actualiza solo cada 30 minutos, sin tener que abrirla. Al tocarlo se abre la app. Su código nativo está en `android-src/` y se añade al proyecto Android durante el build.
+Usa la ubicación que elijas en la app y se actualiza solo cada 30 minutos, sin tener que abrirla (también tras reiniciar el móvil). Abajo a la derecha muestra la hora de la última actualización: tocando **↻** se actualiza al momento. Al tocar el resto del widget se abre la app.
+
+Si Android está ahorrando batería con la app, en la tarjeta **Avisos** aparece un botón **Permitir** para dejar que el widget y los avisos se actualicen en segundo plano. En algunos móviles (Xiaomi, Huawei, Samsung…) conviene además activar el *inicio automático* o quitar la app de «apps en suspensión». Su código nativo está en `android-src/` y se añade al proyecto Android durante el build.
 
 ### Avisos
 

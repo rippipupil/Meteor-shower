@@ -1,6 +1,10 @@
 package com.rippipupil.meteorshower;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -16,6 +20,9 @@ import com.getcapacitor.annotation.PermissionCallback;
  * - setPlace({ lat, lon, name, unit }): lugar principal para el widget y los avisos.
  * - setNotifications({ morning, morningTime, rain, ask }): activa o desactiva los
  *   avisos; con ask = true pide permiso de notificaciones si hace falta.
+ * - batteryStatus() / allowBackground(): ver y quitar el ahorro de batería de
+ *   Android para la app, que es lo que suele impedir que el widget y los
+ *   avisos se actualicen solos.
  */
 @CapacitorPlugin(
     name = "WidgetBridge",
@@ -48,6 +55,34 @@ public class WidgetBridgePlugin extends Plugin {
             return;
         }
         resolveGranted(call);
+    }
+
+    @PluginMethod
+    public void batteryStatus(PluginCall call) {
+        PowerManager pm = (PowerManager) getContext().getSystemService(android.content.Context.POWER_SERVICE);
+        JSObject ret = new JSObject();
+        ret.put("unrestricted", pm == null || pm.isIgnoringBatteryOptimizations(getContext().getPackageName()));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void allowBackground(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getContext().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+        } catch (Exception e) {
+            // Si el móvil no tiene ese diálogo, se abren los ajustes de batería.
+            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                getContext().startActivity(intent);
+            } catch (Exception ignored) {
+                call.reject("No se pudieron abrir los ajustes");
+                return;
+            }
+        }
+        call.resolve();
     }
 
     @PermissionCallback
