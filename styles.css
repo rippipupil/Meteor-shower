@@ -477,6 +477,16 @@ body[data-sky="storm"] { background: #16132a; }
 .bg-row[hidden] { display: none; }
 .bg-row p { margin: 0; font-family: var(--font-pixel); font-size: 1.05rem; line-height: 1.1; color: #b0304f; }
 
+/* Sol */
+.sun-screen { padding-top: 14px; }
+.sun-arc { position: relative; margin: 0 6px; }
+.sun-arc svg { display: block; width: 100%; height: auto; }
+.sun-dot { position: absolute; transform: translate(-50%, -50%); image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 211, 92, 0.55)); }
+.sun-times { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 1.3rem; line-height: 1; color: #f7f2ff; }
+.sun-times > span { display: flex; align-items: center; gap: 4px; }
+.sun-status { margin: 4px 0 0; text-align: center; font-size: 1.25rem; line-height: 1.1; color: var(--lcd-dim); }
+.sun-note { margin: 8px 0 0; font-family: var(--font-pixel); font-size: 1.1rem; line-height: 1.1; color: var(--ink-soft); }
+
 /* Cielo nocturno */
 .night-moon { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
 .night-moon .moon { position: relative; z-index: 1; flex: none; image-rendering: pixelated; filter: drop-shadow(0 0 6px rgba(255, 240, 179, 0.35)); }

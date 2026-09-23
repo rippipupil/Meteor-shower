@@ -532,9 +532,7 @@ function renderToday() {
     ['drop', 'Humedad', `${num(c.relative_humidity_2m)} %`, humidityLevel(c.relative_humidity_2m)],
     ['cloudy', 'Nubosidad', `${num(c.cloud_cover)} %`, ''],
     ['gauge', 'Presión', `${num(c.pressure_msl)} hPa`, pressureLevel(c.pressure_msl).split(' · ')[0]],
-    ['eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`, ''],
-    ['sunrise', 'Amanecer', hhmm(d.sunrise[0]), ''],
-    ['sunset', 'Atardecer', hhmm(d.sunset[0]), `${duration(d.daylight_duration[0])} de luz`]
+    ['eye', 'Visibilidad', vis == null ? '–' : `${num(vis / 1000, vis < 10000 ? 1 : 0)} km`, '']
   ].map(([icon, label, value, note]) => `
       <div class="fact">
         <dt>${px(icon, 'px-xs')} ${label}</dt>
@@ -548,6 +546,7 @@ function renderToday() {
     </section>
     ${renderHourly(f)}
     <section class="tiles">${tiles}</section>
+    ${renderSun(f)}
     ${renderAir()}
     ${renderNightSky(f)}
     <details class="card more"${state.moreOpen ? ' open' : ''}>
@@ -559,6 +558,65 @@ function renderToday() {
   const more = el.panels.hoy.querySelector('.more');
   more.addEventListener('toggle', () => { state.moreOpen = more.open; });
   checkBackground();
+}
+
+/* ---------- Sol: amanecer y atardecer ---------- */
+
+// Hora local del lugar (no la del móvil) en formato ISO «AAAA-MM-DDTHH:MM».
+const placeNow = (f) => new Date(Date.now() + (f.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 16);
+const minutesBetween = (a, b) => Math.round((Date.parse(`${b}Z`) - Date.parse(`${a}Z`)) / 60000);
+const hm = (min) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`);
+
+// Arco pixel del sol: la parte ya recorrida se ilumina y el sol marca por dónde va.
+function sunArc(frac) {
+  const W = 60;
+  const H = 22;
+  // Media elipse recorrida por ángulo, para que los puntos queden repartidos por igual.
+  const at = (t) => [2 + (W - 4) * (1 - Math.cos(Math.PI * t)) / 2, H - 2 - (H - 4) * Math.sin(Math.PI * t)];
+  let dots = '';
+  const N = 24;
+  for (let k = 0; k <= N; k++) {
+    const [x, y] = at(k / N).map(Math.round);
+    dots += `<rect x="${x}" y="${y}" width="1" height="1" fill="${k / N <= frac ? '#ffd35c' : 'rgba(215, 196, 255, 0.35)'}"/>`;
+  }
+  const on = frac >= 0 && frac <= 1;
+  const [sx, sy] = on ? at(frac) : [0, 0];
+  return `
+    <div class="sun-arc">
+      <svg viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges" aria-hidden="true">
+        ${dots}<rect x="0" y="${H - 1}" width="${W}" height="1" fill="rgba(215, 196, 255, 0.5)"/>
+      </svg>
+      ${on ? `<img class="px px-md sun-dot" src="icons/clear-day.svg" alt="" style="left:${(sx / W) * 100}%;top:${(sy / H) * 100}%">` : ''}
+    </div>`;
+}
+
+function renderSun(f) {
+  const d = f.daily;
+  const rise = d.sunrise[0];
+  const set = d.sunset[0];
+  if (!rise || !set) return '';
+  const now = placeNow(f);
+  const frac = (Date.parse(`${now}Z`) - Date.parse(`${rise}Z`)) / (Date.parse(`${set}Z`) - Date.parse(`${rise}Z`));
+  let status;
+  if (now < rise) status = `Amanece en ${hm(minutesBetween(now, rise))}`;
+  else if (now < set) status = `Quedan ${hm(minutesBetween(now, set))} de luz`;
+  else if (d.sunrise[1]) status = `Mañana amanece a las ${hhmm(d.sunrise[1])}`;
+  else status = 'Ya es de noche';
+  const change = d.daylight_duration[1] != null ? Math.round((d.daylight_duration[1] - d.daylight_duration[0]) / 60) : null;
+  const trend = change == null ? '' : change === 0 ? ' · mañana, igual' : ` · mañana ${Math.abs(change)} min ${change > 0 ? 'más' : 'menos'}`;
+  return `
+    <section class="card sun">
+      <h3>Sol</h3>
+      <div class="screen sun-screen">
+        ${sunArc(frac)}
+        <div class="sun-times">
+          <span>${px('sunrise', 'px-xs')} ${hhmm(rise)}</span>
+          <span>${hhmm(set)} ${px('sunset', 'px-xs')}</span>
+        </div>
+        <p class="sun-status">${status}</p>
+      </div>
+      <p class="sun-note">${duration(d.daylight_duration[0])} de luz hoy${trend}</p>
+    </section>`;
 }
 
 /* ---------- Cielo nocturno ---------- */
