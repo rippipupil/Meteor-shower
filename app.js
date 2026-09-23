@@ -394,20 +394,20 @@ function buildAdvice(f) {
   const rain = d.precipitation_sum[0] ?? 0;
   const code = d.weather_code[0];
   const rt = rainTiming(f);
-  if (code >= 95) tips.push(['storm', 'Posibles tormentas: evita zonas abiertas si oyes truenos.']);
-  if (SNOW_CODES.includes(code)) tips.push(['snow', 'Se espera nieve: precaución en carretera y aceras.']);
-  if (rt.wet) tips.push(['umbrella', `${rt.text}: lleva paraguas (≈ ${num(rain, 1)} mm en el día).`]);
-  else if (prob >= 30 && rt.text !== 'Sin lluvia prevista hoy') tips.push(['drizzle', `${rt.text}.`]);
+  if (code >= 95) tips.push(['storm', 'Tormentas posibles']);
+  if (SNOW_CODES.includes(code)) tips.push(['snow', 'Nieve · cuidado al conducir']);
+  if (rt.wet) tips.push(['umbrella', `${rt.text} · lleva paraguas`]);
+  else if (prob >= 30 && rt.text !== 'Sin lluvia prevista hoy') tips.push(['drizzle', rt.text]);
   const uv = d.uv_index_max[0];
-  if (uv != null && uv >= 6) tips.push(['clear-day', `Índice UV ${uvLevel(uv).toLowerCase()} (${num(uv)}): usa protección solar en las horas centrales.`]);
+  if (uv != null && uv >= 6) tips.push(['clear-day', `UV ${uvLevel(uv).toLowerCase()} (${num(uv)}) · usa protector`]);
   const max = d.temperature_2m_max[0];
   const min = d.temperature_2m_min[0];
-  if (max >= tUnit(32)) tips.push(['thermo', 'Calor intenso: bebe agua y evita el sol a mediodía.']);
-  if (min <= tUnit(3)) tips.push(['thermo', 'Frío a primera hora y por la noche: abrígate bien.']);
-  else if (max - min >= tDelta(12)) tips.push(['thermo', `Gran diferencia entre el día y la noche (${Math.round(max - min)}°): lleva una chaqueta.`]);
+  if (max >= tUnit(32)) tips.push(['thermo', 'Mucho calor · bebe agua']);
+  if (min <= tUnit(3)) tips.push(['thermo', 'Frío al amanecer · abrígate']);
+  else if (max - min >= tDelta(12)) tips.push(['thermo', `${Math.round(max - min)}° entre día y noche · lleva chaqueta`]);
   const gusts = d.wind_gusts_10m_max[0];
-  if (gusts >= 50) tips.push(['wind', `Rachas fuertes de viento de hasta ${Math.round(gusts)} km/h.`]);
-  if (!tips.length) tips.push(['check', 'Día tranquilo, sin incidencias destacables.']);
+  if (gusts >= 50) tips.push(['wind', `Rachas de ${Math.round(gusts)} km/h`]);
+  if (!tips.length) tips.push(['check', 'Día tranquilo']);
   return tips;
 }
 
@@ -421,12 +421,15 @@ function renderHourly(f) {
 
   const colW = 58;
   const width = hours.length * colW;
-  const height = 64;
+  const height = 58;
   const temps = hours.map((i) => h.temperature_2m[i]);
-  const lo = Math.min(...temps);
-  const hi = Math.max(...temps);
-  const range = hi - lo || 1;
-  const y = (v) => 22 + (1 - (v - lo) / range) * (height - 32);
+  // Rango mínimo de 6° para que un día de temperaturas casi planas no deje
+  // la línea pegada arriba con un hueco vacío debajo.
+  const mid = (Math.min(...temps) + Math.max(...temps)) / 2;
+  const half = Math.max((Math.max(...temps) - Math.min(...temps)) / 2, tDelta(3));
+  const lo = mid - half;
+  const range = half * 2;
+  const y = (v) => 22 + (1 - (v - lo) / range) * (height - 30);
   const points = hours.map((_, k) => `${k * colW + colW / 2},${y(temps[k]).toFixed(1)}`).join(' ');
   const labels = hours.map((_, k) => `
     <circle cx="${k * colW + colW / 2}" cy="${y(temps[k]).toFixed(1)}" r="3"></circle>

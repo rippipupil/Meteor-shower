@@ -3,6 +3,6 @@
   "appName": "Meteor Shower",
   "webDir": "www",
   "android": {
-    "backgroundColor": "#eee6ff"
+    "backgroundColor": "#1c1233"
   }
 }

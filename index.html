@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Meteor Shower</title>
   <meta name="description" content="El tiempo de hoy, de la semana y del mes en tu ubicación, con datos meteorológicos reales.">
-  <meta name="theme-color" content="#eee6ff">
+  <meta name="theme-color" content="#1c1233">
   <meta name="apple-mobile-web-app-title" content="Meteor Shower">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -24,15 +24,10 @@
         <span class="brand-name">Meteor <span>Shower</span></span>
       </div>
       <div class="actions" id="actions" hidden>
-        <button id="unitBtn" class="chrome-btn" type="button" aria-label="Cambiar a grados Fahrenheit">°C</button>
-        <button id="refreshBtn" class="chrome-btn" type="button" aria-label="Actualizar">↻</button>
-        <button id="changeBtn" class="chrome-btn" type="button" aria-label="Cambiar ubicación">
-          <svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor">
-            <rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="6" height="1"/>
-            <rect x="0" y="2" width="3" height="2"/><rect x="5" y="2" width="3" height="2"/>
-            <rect x="1" y="4" width="6" height="1"/><rect x="2" y="5" width="4" height="1"/>
-            <rect x="3" y="6" width="2" height="2"/>
-          </svg>
+        <button id="unitBtn" class="pixel-btn" type="button" aria-label="Cambiar a grados Fahrenheit">°C</button>
+        <button id="refreshBtn" class="pixel-btn" type="button" aria-label="Actualizar"><svg viewBox="0 0 10 10" width="18" height="18" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor"><rect x="3" y="0" width="4" height="1"/><rect x="8" y="0" width="1" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="6" y="1" width="3" height="1"/><rect x="1" y="2" width="2" height="1"/><rect x="6" y="2" width="3" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="8" y="4" width="2" height="1"/><rect x="0" y="5" width="2" height="1"/><rect x="8" y="5" width="2" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="7" y="7" width="2" height="1"/><rect x="2" y="8" width="6" height="1"/><rect x="3" y="9" width="4" height="1"/></svg></button>
+        <button id="changeBtn" class="pixel-btn" type="button" aria-label="Cambiar ubicación">
+          <svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true" fill="currentColor"><rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="6" height="1"/><rect x="0" y="2" width="3" height="1"/><rect x="5" y="2" width="3" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="3" height="1"/><rect x="1" y="4" width="6" height="1"/><rect x="2" y="5" width="4" height="1"/><rect x="3" y="6" width="2" height="1"/><rect x="3" y="7" width="2" height="1"/></svg>
         </button>
       </div>
     </header>

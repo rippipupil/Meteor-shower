@@ -10,7 +10,7 @@ App meteorológica sencilla con estilo pixel retro en violeta: pide tu ubicació
 - **Semana**: previsión de 7 días con máximas, mínimas, probabilidad de lluvia y detalles de cada día.
 - **Mes**: los próximos 30 días en calendario y gráfico. Los 16 primeros son previsión real; como no existe previsión fiable día a día más allá, el resto muestra la media real de los últimos 10 años en esa zona, claramente marcada.
 - Recuerda la ubicación, cambia entre °C y °F y se actualiza sola al volver a la app.
-- Estilo pixel retro inspirado en el reproductor [starseeked](https://github.com/rippipupil/Starseeked): pantallas LCD, iconos del tiempo en pixel art y burbujas subiendo por el fondo.
+- Estilo pixel retro en violeta oscuro inspirado en el reproductor [starseeked](https://github.com/rippipupil/Starseeked): paneles y botones con marcos pixel art (`frames/`), pantallas LCD, iconos del tiempo en pixel art (`icons/`) y burbujas subiendo por el fondo.
 
 ## Instalar en Android
 
@@ -18,7 +18,18 @@ App meteorológica sencilla con estilo pixel retro en violeta: pide tu ubicació
 
 En el móvil, descarga el archivo, ábrelo y confirma la instalación. Android puede pedir permiso para instalar aplicaciones descargadas desde el navegador. La primera vez que pulses «Usar mi ubicación», la app pedirá permiso para acceder a tu ubicación.
 
-El APK se genera automáticamente con GitHub Actions cada vez que se actualiza la rama `main` y se publica en [Releases](https://github.com/rippipupil/meteor-shower/releases). Todos se firman con la misma clave (`debug.keystore`), así que cada versión nueva se instala encima de la anterior como una actualización.
+El APK se genera automáticamente con GitHub Actions cada vez que se actualiza la rama `main` y se publica en [Releases](https://github.com/rippipupil/meteor-shower/releases). Es una versión *release* (no de depuración) firmada siempre con la misma clave y con un número de versión que sube en cada build, así que cada APK nuevo se instala encima del anterior como una actualización.
+
+Como la app no viene de Google Play, Play Protect puede mostrar un aviso al instalarla («app desconocida» o «analizar app»). Pulsa **Más detalles → Instalar de todos modos** o **Analizar app** y después instala.
+
+### Firma del APK
+
+La clave de firma **no está en el repositorio**: con ella cualquiera podría firmar una actualización falsa de la app. El build la lee de dos secretos del repositorio (*Settings → Secrets and variables → Actions → New repository secret*):
+
+- `RELEASE_KEYSTORE_BASE64`: el archivo de la clave (`.keystore`) codificado en base64.
+- `RELEASE_KEYSTORE_PASSWORD`: su contraseña (el alias de la clave es `meteorshower`).
+
+Si faltan, el build se detiene con un aviso y no publica nada. Guarda una copia de la clave en un sitio seguro: si se pierde, las versiones nuevas tendrían que firmarse con otra clave y habría que desinstalar la app una vez para instalarlas.
 
 ### Widget de la pantalla de inicio
 

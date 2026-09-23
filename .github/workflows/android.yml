@@ -13,6 +13,19 @@ jobs:
     name: Compilar APK Android
     runs-on: ubuntu-latest
     steps:
+      # La clave de firma y su contraseña se guardan como secretos del
+      # repositorio (Settings → Secrets and variables → Actions), nunca en el
+      # código: con ellas cualquiera podría firmar una "actualización" falsa.
+      - name: Comprobar la clave de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Faltan los secretos RELEASE_KEYSTORE_BASE64 y RELEASE_KEYSTORE_PASSWORD. Consulta el README (sección 'Firma del APK')."
+            exit 1
+          fi
+
       - name: Descargar el repositorio
         uses: actions/checkout@v4
 
@@ -27,13 +40,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Firmar siempre con la misma clave permite instalar cada APK nuevo
-      # encima del anterior como una actualización, sin desinstalar.
-      - name: Usar una firma de depuración fija
-        run: |
-          mkdir -p ~/.android
-          cp debug.keystore ~/.android/debug.keystore
-
       - name: Instalar Capacitor
         run: npm install
 
@@ -41,7 +47,7 @@ jobs:
         run: |
           mkdir -p www
           cp index.html app.js styles.css manifest.webmanifest icon.svg icon-192.png icon-512.png apple-touch-icon.png www/
-          cp -r icons fonts www/
+          cp -r icons fonts frames www/
 
       - name: Crear proyecto Android
         run: npx cap add android
@@ -49,7 +55,9 @@ jobs:
       # Widget de la pantalla de inicio, puente con la web y permiso de
       # ubicación: el código nativo vive en android-src/ y se copia al
       # proyecto que Capacitor acaba de generar.
-      - name: Añadir el widget y los permisos
+      - name: Añadir el widget, los permisos y el número de versión
+        env:
+          VERSION_CODE: ${{ github.run_number }}
         run: python3 android-src/install.py android
 
       - name: Generar el icono de la app a partir de assets/
@@ -58,15 +66,32 @@ jobs:
       - name: Copiar la aplicación web al proyecto Android
         run: npx cap sync android
 
-      - name: Compilar APK de Android
+      # Versión "release" (no depurable) firmada con la clave propia de la
+      # app: Play Protect desconfía mucho más de los APK de depuración.
+      # Firmar siempre con la misma clave permite instalar cada APK nuevo
+      # encima del anterior como una actualización.
+      - name: Compilar APK de Android (release)
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
+
+      - name: Firmar el APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BUILD_TOOLS/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          "$BUILD_TOOLS/apksigner" sign --ks "$RUNNER_TEMP/release.keystore" --ks-key-alias meteorshower \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD --out meteor-shower.apk aligned.apk
+          rm -f "$RUNNER_TEMP/release.keystore"
+          "$BUILD_TOOLS/apksigner" verify --print-certs meteor-shower.apk
 
       - name: Guardar APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: meteor-shower-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: meteor-shower.apk
           if-no-files-found: error
           retention-days: 90
 
@@ -75,5 +100,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="apk-${{ github.run_number }}"
-          cp android/app/build/outputs/apk/debug/app-debug.apk meteor-shower.apk
           gh release create "$TAG" meteor-shower.apk --target "${{ github.sha }}" --title "Meteor Shower Android $TAG" --notes "APK generado automáticamente desde la rama main. Descárgalo e instálalo para usar Meteor Shower en Android."

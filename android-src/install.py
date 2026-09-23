@@ -4,6 +4,7 @@
 que el widget, el puente con la web y los permisos viven en android-src/ y
 este script los copia dentro. Se puede ejecutar varias veces sin duplicar nada.
 """
+import os
 import pathlib
 import re
 import shutil
@@ -52,4 +53,13 @@ if 'WeatherWidgetProvider' not in manifest:
         sys.exit('No se encontró </application> en el manifiesto')
     manifest = re.sub(r'\n([ \t]*)</application>', lambda m: '\n' + RECEIVER + m.group(1) + '</application>', manifest, count=1)
 manifest_path.write_text(manifest, encoding='utf-8')
-print('Widget y permisos añadidos a', APP)
+
+# 4. Versión: cada build tiene un número mayor que el anterior, para que
+#    Android trate cada APK nuevo como una actualización de la app instalada.
+version_code = int(os.environ.get('VERSION_CODE', '1'))
+gradle_path = APP.parent.parent / 'build.gradle'
+gradle = gradle_path.read_text(encoding='utf-8')
+gradle = re.sub(r'versionCode \d+', f'versionCode {version_code}', gradle, count=1)
+gradle = re.sub(r'versionName "[^"]*"', f'versionName "1.{version_code}"', gradle, count=1)
+gradle_path.write_text(gradle, encoding='utf-8')
+print('Widget y permisos añadidos a', APP, '· versión', f'1.{version_code}', f'({version_code})')
